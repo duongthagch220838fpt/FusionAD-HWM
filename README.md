@@ -39,6 +39,6 @@ You can specify the following options:
 ## Note
 
 <div class="alert alert-info">
-- The code utilizes `wandb` during training to log results. Please be sure to have a wandb account. Otherwise, if you prefer to not use `wandb`, disable it in `FAD_training.py` with the `flag mode = 'disabled'`.
+- The code utilizes `wandb` during training to log results. Please be sure to have a wandb account. Otherwise, if you prefer to not use `wandb`, disable it in `training.py` with the `flag mode = 'disabled'`.
 
 </div>

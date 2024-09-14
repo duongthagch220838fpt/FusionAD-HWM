@@ -31,7 +31,7 @@ def train_FAD(args):
     model_name = f'{args.class_name}_{args.epochs_no}ep_{args.batch_size}bs'
 
     wandb.init(
-        project = 'crossmodal-feature-mappings',
+        project = 'FusionAD',
         name = model_name
     )
 

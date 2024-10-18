@@ -1,23 +1,27 @@
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 import cv2
 import kornia as K
 import kornia.augmentation as Aug
 import torchvision.transforms as T
 import matplotlib.pyplot as plt
+import os
 
 
 class LowLightDataset(Dataset):
-    def __init__(self, image_paths, transform=None, low_light_transform=None):
+    def __init__(self, image_folder, transform=None, low_light_transform=None, extensions=".jpg"):
         """
         Args:
             image_paths (list): List of paths to the image files.
             transform (callable, optional): Optional transform to be applied to both original and low-light images.
             low_light_transform (callable, optional): Transform to apply to simulate low-light conditions.
         """
-        self.image_paths = image_paths
+        self.image_paths = image_folder
         self.transform = transform
         self.low_light_transform = low_light_transform
+
+        self.image_paths = [os.path.join(image_folder, f) for f in os.listdir(image_folder)
+                            if f.lower().endswith(extensions)]
 
     def __len__(self):
         return len(self.image_paths)
@@ -47,7 +51,7 @@ class LowLightDataset(Dataset):
 
 # Kornia-based low-light transform that darkens part of the image
 class KorniaLowLightWithShadowTransform:
-    def __init__(self, brightness_factor_range=(-0.7, -0.3), roughness=(0.1, 0.7), shade_intensity=(-1.0, 0.0), shade_quantity=(0.0, 1.0), p=0.5):
+    def __init__(self, brightness_factor_range=(-0.5, -0.3), roughness=(0.1, 0.7), shade_intensity=(-1.0, 0.0), shade_quantity=(0.0, 1.0), p=0.5):
         self.brightness_factor_range = brightness_factor_range
         self.shadow_transform = Aug.RandomPlasmaShadow(
             roughness=roughness,
@@ -163,9 +167,16 @@ def show_images(original, low_light):
     axs[1].axis("off")
 
     plt.show()
+
+def get_dataloader(image_folder,transform, low_light_transform, batch_size = 1, num_workers = 1, shuffle = False):
+    data_loader = DataLoader(dataset = LowLightDataset(image_folder,transform=transform, low_light_transform=low_light_transform), batch_size = batch_size, shuffle = shuffle, 
+                             num_workers = num_workers, drop_last = False, pin_memory = True)
+    
+    return data_loader
+
 if __name__ == '__main__':
     # Sample image paths
-    image_paths = ["Energizer-AAA-2.jpg", "Energizer-AAA-2.jpg"]
+    image_paths = "./"
 
     # Instantiate low-light transform
     low_light_transform = T.Compose([

@@ -74,11 +74,11 @@ def train(args):
         for i, (images, lowlight) in enumerate(tqdm(train_loader, desc = f'Epoch {epoch + 1}/{args.epochs_no}')):
             images, lowlight = images.to(device), lowlight.to(device)
 
-            features = feature_extractor(images)
-            features_lowlight = feature_extractor(lowlight)
-            transfer_features = FAD_LLToClean(features)
+            features,features_lowlight = feature_extractor(images, lowlight)
 
-            loss = 1- metric(transfer_features, features_lowlight).mean()
+            transfer_features = FAD_LLToClean(features_lowlight)
+
+            loss = 1- metric(features, transfer_features).mean()
 
             epoch_cos_sim.append(loss.item())
             if not torch.isnan(loss) and not torch.isinf(loss):

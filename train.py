@@ -71,14 +71,14 @@ def train(args):
     for epoch in trange(args.epochs_no, desc = f'Training Feature Transfer Net.{args.class_name}'):
         FAD_LLToClean.train()
         epoch_cos_sim = []
-        for i, (images, labels) in enumerate(tqdm(train_loader, desc = f'Epoch {epoch + 1}/{args.epochs_no}')):
-            images, labels = images.to(device), labels.to(device)
+        for i, (images, lowlight) in enumerate(tqdm(train_loader, desc = f'Epoch {epoch + 1}/{args.epochs_no}')):
+            images, lowlight = images.to(device), lowlight.to(device)
 
-            features = feature_extractor(images)
+            features,features_lowlight = feature_extractor(images, lowlight)
 
-            transfer_features = FAD_LLToClean(features)
+            transfer_features = FAD_LLToClean(features_lowlight)
 
-            loss = 1- metric(transfer_features, features).mean()
+            loss = 1- metric(features, transfer_features).mean()
 
             epoch_cos_sim.append(loss.item())
             if not torch.isnan(loss) and not torch.isinf(loss):
@@ -97,14 +97,14 @@ def train(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'Train Crossmodal Feature Networks (FADs) on a dataset.')
 
-    parser.add_argument('--dataset_path', default = './datasets/mvtec3d', type = str, 
+    parser.add_argument('--dataset_path', default = './datasets/', type = str, 
                         help = 'Dataset path.')
 
     parser.add_argument('--checkpoint_savepath', default = './checkpoints/checkpoints_FAD_mvtec', type = str, 
                         help = 'Where to save the model checkpoints.')
     
-    parser.add_argument('--class_name', default = None, type = str, choices = ["bagel", "cable_gland", "carrot", "cookie", "dowel", "foam", "peach", "potato", "rope", "tire"],
-                        help = 'Category name.')
+    # parser.add_argument('--class_name', default = None, type = str, choices = ["bagel", "cable_gland", "carrot", "cookie", "dowel", "foam", "peach", "potato", "rope", "tire"],
+    #                     help = 'Category name.')
     
     parser.add_argument('--epochs_no', default = 50, type = int,
                         help = 'Number of epochs to train the FADs.')

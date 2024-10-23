@@ -48,7 +48,6 @@ class LowLightDataset(Dataset):
         return original_image, low_light_image
 
 
-
 # Kornia-based low-light transform that darkens part of the image
 class KorniaLowLightWithShadowTransform:
     def __init__(self, brightness_factor_range=(-0.5, -0.3), roughness=(0.1, 0.7), shade_intensity=(-1.0, 0.0), shade_quantity=(0.0, 1.0), p=0.5):
@@ -62,23 +61,28 @@ class KorniaLowLightWithShadowTransform:
 
     def __call__(self, image):
         # Random brightness reduction for low-light simulation
-        brightness_factor = torch.FloatTensor(1).uniform_(*self.brightness_factor_range).item()
+        brightness_factor = torch.FloatTensor(1).uniform_(
+            *self.brightness_factor_range).item()
         low_light_image = K.enhance.adjust_brightness(image, brightness_factor)
 
         # Apply RandomPlasmaShadow for shadow effect
-        low_light_image_with_shadow = self.shadow_transform(low_light_image.unsqueeze(0)).squeeze(0)
+        low_light_image_with_shadow = self.shadow_transform(
+            low_light_image.unsqueeze(0)).squeeze(0)
 
         return low_light_image_with_shadow
-    
+
+
 class GlobalLowLightTransform:
     def __init__(self, brightness_factor_range=(0.3, 0.7)):
         self.brightness_factor_range = brightness_factor_range
 
     def __call__(self, image):
-        brightness_factor = torch.FloatTensor(1).uniform_(*self.brightness_factor_range).item()
+        brightness_factor = torch.FloatTensor(1).uniform_(
+            *self.brightness_factor_range).item()
         low_light_image = K.enhance.adjust_brightness(image, brightness_factor)
         return low_light_image
-    
+
+
 class AdditiveGaussianNoiseTransform:
     # Additive Noise: Adding noise to simulate camera sensor noise.
     def __init__(self, mean=0.0, std=0.1):
@@ -87,8 +91,10 @@ class AdditiveGaussianNoiseTransform:
 
     def __call__(self, image):
         noise = torch.randn_like(image) * self.std + self.mean
-        noisy_image = torch.clamp(image + noise, 0.0, 1.0)  # Clamp to valid range
+        noisy_image = torch.clamp(
+            image + noise, 0.0, 1.0)  # Clamp to valid range
         return noisy_image
+
 
 class VignetteLowLightTransform:
     def __init__(self, strength=0.5):
@@ -105,6 +111,7 @@ class VignetteLowLightTransform:
         vignette_image = torch.clamp(image * vignette_mask, 0.0, 1.0)
         return vignette_image
 
+
 class ColorShiftLowLightTransform:
     def __call__(self, image):
         # Convert to grayscale and blend to reduce saturation
@@ -112,10 +119,12 @@ class ColorShiftLowLightTransform:
         desaturated_image = 0.7 * image + 0.3 * grayscale
 
         # Add a slight blue tint
-        blue_tint = torch.tensor([0.9, 0.9, 1.1], dtype=image.dtype).view(3, 1, 1).to(image.device)
+        blue_tint = torch.tensor([0.9, 0.9, 1.1], dtype=image.dtype).view(
+            3, 1, 1).to(image.device)
         low_light_image = torch.clamp(desaturated_image * blue_tint, 0.0, 1.0)
 
         return low_light_image
+
 
 class ContrastReductionLowLightTransform:
     # Contrast Reduction: Lowering contrast for a more washed-out appearance.
@@ -123,9 +132,11 @@ class ContrastReductionLowLightTransform:
         self.contrast_factor_range = contrast_factor_range
 
     def __call__(self, image):
-        contrast_factor = torch.FloatTensor(1).uniform_(*self.contrast_factor_range).item()
+        contrast_factor = torch.FloatTensor(1).uniform_(
+            *self.contrast_factor_range).item()
         low_contrast_image = K.enhance.adjust_contrast(image, contrast_factor)
         return low_contrast_image
+
 
 class PatchLowLightTransform:
     # Patch-Based Dimming: Simulating uneven lighting by darkening random patches of the image.
@@ -135,19 +146,22 @@ class PatchLowLightTransform:
 
     def __call__(self, image):
         _, h, w = image.shape
-        patch_size = int(torch.FloatTensor(1).uniform_(*self.patch_size_range).item() * min(h, w))
+        patch_size = int(torch.FloatTensor(1).uniform_(
+            *self.patch_size_range).item() * min(h, w))
         top_left_x = torch.randint(0, w - patch_size, (1,)).item()
         top_left_y = torch.randint(0, h - patch_size, (1,)).item()
-        brightness_factor = torch.FloatTensor(1).uniform_(*self.brightness_factor_range).item()
+        brightness_factor = torch.FloatTensor(1).uniform_(
+            *self.brightness_factor_range).item()
 
         # Create a mask for the patch and apply brightness reduction
         mask = torch.ones_like(image)
-        mask[:, top_left_y:top_left_y + patch_size, top_left_x:top_left_x + patch_size] *= brightness_factor
+        mask[:, top_left_y:top_left_y + patch_size,
+             top_left_x:top_left_x + patch_size] *= brightness_factor
         low_light_image = image * mask
 
         return torch.clamp(low_light_image, 0.0, 1.0)
 
-    
+
 def show_images(original, low_light):
     # Convert from Tensor to NumPy and reshape for display
     original_np = original.permute(1, 2, 0).cpu().numpy()
@@ -168,26 +182,28 @@ def show_images(original, low_light):
 
     plt.show()
 
-def get_dataloader(image_folder,transform, low_light_transform, batch_size = 1, num_workers = 1, shuffle = False):
-    data_loader = DataLoader(dataset = LowLightDataset(image_folder,transform=transform, low_light_transform=low_light_transform), batch_size = batch_size, shuffle = shuffle, 
-                             num_workers = num_workers, drop_last = False, pin_memory = True)
-    
+
+def get_dataloader(image_folder, transform, low_light_transform, batch_size=1, num_workers=1, shuffle=False):
+    data_loader = DataLoader(dataset=LowLightDataset(image_folder, transform=transform, low_light_transform=low_light_transform), batch_size=batch_size, shuffle=shuffle,
+                             num_workers=num_workers, drop_last=False, pin_memory=True)
+
     return data_loader
+
 
 if __name__ == '__main__':
     # Sample image paths
-    image_paths = "./"
+    image_paths = "FusionAD-2D/FusionAD-DuongMinh/models"
 
     # Instantiate low-light transform
     low_light_transform = T.Compose([
-        
+
         # ColorShiftLowLightTransform(),
         # ContrastReductionLowLightTransform(),
         # PatchLowLightTransform(),
         KorniaLowLightWithShadowTransform(p=1.0),
         # RandomLowLightTransform(),
         # VignetteLowLightTransform(),
-    
+
     ])
 
     # Create the common transform
@@ -195,9 +211,9 @@ if __name__ == '__main__':
         T.Resize((256, 256))
     ])
 
-    
     # Create the dataset
-    dataset = LowLightDataset(image_paths, transform=common_transform, low_light_transform=low_light_transform)
+    dataset = LowLightDataset(
+        image_paths, transform=common_transform, low_light_transform=low_light_transform)
 
     # Example usage
     for original, low_light in dataset:

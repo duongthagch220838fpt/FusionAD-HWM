@@ -12,9 +12,8 @@ import torchvision.transforms as T
 
 from models.ad_models import FeatureExtractors
 from models.feature_transfer_nets import FeatureProjectionMLP, FeatureProjectionMLP_big
-from models.datset_2D import LowLightDataset, AdditiveGaussianNoiseTransform, GlobalLowLightTransform, KorniaLowLightWithShadowTransform, PatchLowLightTransform, get_dataloader
-
-
+from dataset2D import *
+from models.dataset import BaseAnomalyDetectionDataset
 def set_seeds(sid=115):
     np.random.seed(sid)
 
@@ -35,28 +34,21 @@ def train(args):
         project='AD',
         name=model_name
     )
-    common = T.Compose([
-        T.Resize((224, 224)),
-        T.ToTensor(),
-        T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
+    IMAGENET_MEAN = [0.485, 0.456, 0.406]
+    IMAGENET_STD = [0.229, 0.224, 0.225]
+    common =   T.Compose([
+            SquarePad(),
+            T.Resize((224, 224), interpolation = T.InterpolationMode.BICUBIC),
+            T.ToTensor(),
+            T.Normalize(mean = IMAGENET_MEAN, std = IMAGENET_STD)
+            ])
 
-    lowlight = T.Compose([
-        T.Resize((224, 224)),
-        T.ToTensor(),
-        # ColorShiftLowLightTransform(),
-        # ContrastReductionLowLightTransform(),
-        # PatchLowLightTransform(),
-        KorniaLowLightWithShadowTransform(p=1.0),
-        # RandomLowLightTransform(),
-        # VignetteLowLightTransform(),
-        T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
+
     # Dataloader.
-    train_loader = get_dataloader("./", )
+    train_loader = get_dataloader(args.dataset_path, common, common, 64, 16, True)
 
     # Feature extractors.
-    feature_extractor = FeatureExtractors()
+    feature_extractor = FeatureExtractors(device=device)
 
     # Model instantiation.
     FAD_LLToClean = FeatureProjectionMLP(in_features=768, out_features=768)
@@ -64,6 +56,7 @@ def train(args):
     optimizer = torch.optim.Adam(params=chain(FAD_LLToClean.parameters()))
 
     FAD_LLToClean.to(device)
+    feature_extractor.to(device)
 
     metric = torch.nn.CosineSimilarity(dim=-1, eps=1e-06)
 
@@ -93,24 +86,26 @@ def train(args):
         if not os.path.exists(args.checkpoint_folder):
             os.mkdir(args.checkpoint_folder)
         if (epoch + 1) % args.save_interval == 0:
-            torch.save(FAD_LLToClean.state_dict(), rf'{args.checkpoint_folder}/{
-                       args.class_name}/FAD_LLToClean_{args.class_name}_{args.epochs_no}ep_{args.batch_size}bs.pth')
+            torch.save(
+                FAD_LLToClean.state_dict(),
+                f'{args.checkpoint_folder}/{args.class_name}/FAD_LLToClean_{args.class_name}_{args.epochs_no}ep_{args.batch_size}bs.pth'
+            )
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Train Crossmodal Feature Networks (FADs) on a dataset.')
 
-    parser.add_argument('--dataset_path', default='./datasets/', type=str,
+    parser.add_argument('--dataset_path', default='data/Normal', type=str,
                         help='Dataset path.')
 
-    parser.add_argument('--checkpoint_savepath', default='./checkpoints/checkpoints_FAD_mvtec', type=str,
+    parser.add_argument('--checkpoint_folder', default='checkpoints', type=str,
                         help='Where to save the model checkpoints.')
 
-    # parser.add_argument('--class_name', default = None, type = str, choices = ["bagel", "cable_gland", "carrot", "cookie", "dowel", "foam", "peach", "potato", "rope", "tire"],
-    #                     help = 'Category name.')
+    parser.add_argument('--class_name', default = "Bowl", type = str, choices = ["bagel", "cable_gland", "carrot", "cookie", "dowel", "foam", "peach", "potato", "rope", "tire"],
+                        help = 'Category name.')
 
-    parser.add_argument('--epochs_no', default=50, type=int,
+    parser.add_argument('--epochs_no', default=10, type=int,
                         help='Number of epochs to train the FADs.')
 
     parser.add_argument('--batch_size', default=4, type=int,

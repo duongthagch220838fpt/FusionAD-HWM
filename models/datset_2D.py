@@ -192,7 +192,7 @@ def get_dataloader(image_folder, transform, low_light_transform, batch_size=1, n
 
 if __name__ == '__main__':
     # Sample image paths
-    image_paths = "FusionAD-2D/FusionAD-DuongMinh/models"
+    image_paths = "models"
 
     # Instantiate low-light transform
     low_light_transform = T.Compose([

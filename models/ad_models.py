@@ -336,8 +336,7 @@ class PointTransformer(nn.Module):
                 incompatible.unexpected_keys
             )
 
-        print(f'[Transformer] Successful Loading the ckpt from {
-              bert_ckpt_path}')
+        print(f'[Transformer] Successful Loading the ckpt from {bert_ckpt_path}')
 
     def forward(self, pts):
         if self.encoder_dims != self.trans_dim:

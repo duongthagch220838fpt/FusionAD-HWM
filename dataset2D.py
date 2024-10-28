@@ -71,8 +71,8 @@ class TestDataset(Dataset):
             low_light_transform (callable, optional): Transform to apply to low-light images.
             extensions (str): Image file extension for low-light and well-lit images.
         """
-        self.low_light_path = os.path.join(data_folder, "low_light")
-        self.well_light_path = os.path.join(data_folder, "well_light")
+        self.low_light_path = os.path.join(data_folder, "Low_light")
+        self.well_light_path = os.path.join(data_folder, "Well_light")
         self.gt_folder = gt_folder
 
         self.transform = transform

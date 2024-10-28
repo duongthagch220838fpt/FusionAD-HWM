@@ -59,6 +59,72 @@ class LowLightDataset(Dataset):
             low_light_image = image_low
 
         return original_image, low_light_image
+    
+
+class TestDataset(Dataset):
+    def __init__(self, data_folder, gt_folder, transform=None, low_light_transform=None, extensions=".jpg"):
+        """
+        Args:
+            data_folder (str): Path to the folder containing 'low_light' and 'well_light' images.
+            gt_folder (str): Path to the folder containing ground truth images in PNG format.
+            transform (callable, optional): Transform to be applied to well-lit images.
+            low_light_transform (callable, optional): Transform to apply to low-light images.
+            extensions (str): Image file extension for low-light and well-lit images.
+        """
+        self.low_light_path = os.path.join(data_folder, "low_light")
+        self.well_light_path = os.path.join(data_folder, "well_light")
+        self.gt_folder = gt_folder
+
+        self.transform = transform
+        self.low_light_transform = low_light_transform
+        self.gt_transform = T.Compose([
+            SquarePad(),
+            T.Resize((224, 224), interpolation=T.InterpolationMode.NEAREST),
+            T.ToTensor()])
+
+        # Get the list of images in the well-lit and low-light folders
+        self.well_lit_images = sorted(
+            [f for f in os.listdir(self.well_light_path) if f.lower().endswith(extensions)]
+        )
+        self.low_light_images = sorted(
+            [f for f in os.listdir(self.low_light_path) if f.lower().endswith(extensions)]
+        )
+
+        # Ensure both folders contain the same number of images
+        assert len(self.well_lit_images) == len(self.low_light_images), \
+            "Mismatch in number of images between well-light and low-light folders."
+
+    def __len__(self):
+        return len(self.low_light_images)
+
+    def __getitem__(self, idx):
+        # Load the low-light and well-lit images
+        img_low_name = self.low_light_images[idx]
+        img_high_name = self.well_lit_images[idx]
+
+        image_low = Image.open(os.path.join(self.low_light_path, img_low_name)).convert('RGB')
+        image_high = Image.open(os.path.join(self.well_light_path, img_high_name)).convert('RGB')
+
+        # Load the ground truth mask (assumes corresponding .png file in gt_folder)
+        gt_name = os.path.splitext(img_low_name)[0] + '.png'
+        gt_path = os.path.join(self.gt_folder, gt_name)
+        gt_mask = Image.open(gt_path).convert('L')  # Load as grayscale
+
+        # Apply transforms to the images if specified
+        if self.transform:
+            original_image = self.transform(image_high)
+        else:
+            original_image = image_high  # Default to tensor conversion
+
+        if self.low_light_transform:
+            low_light_image = self.low_light_transform(image_low)
+        else:
+            low_light_image = image_low  # Default to tensor conversion
+
+        # Convert ground truth mask to tensor
+        gt_mask = self.gt_transform(gt_mask)
+
+        return original_image, low_light_image, gt_mask
 
 def show_images(original, low_light):
     # Convert from Tensor to NumPy and reshape for display

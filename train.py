@@ -13,6 +13,7 @@ import torchvision.transforms as T
 from models.ad_models import FeatureExtractors
 from models.feature_transfer_nets import FeatureProjectionMLP, FeatureProjectionMLP_big
 from dataset2D import *
+from models.features2d import Multimodal2DFeatures
 from models.dataset import BaseAnomalyDetectionDataset
 
 
@@ -48,7 +49,7 @@ def train(args):
     train_loader = get_dataloader(args.dataset_path, common, common, 64, 16, True)
 
     # Feature extractors.
-    feature_extractor = FeatureExtractors(device=device)
+    feature_extractor = Multimodal2DFeatures(device=device)
 
     # Model instantiation.
     FAD_LLToClean = FeatureProjectionMLP(in_features=768, out_features=768)
@@ -70,9 +71,11 @@ def train(args):
         ):
             images, lowlight = images.to(device), lowlight.to(device)
             with torch.no_grad():
-                features, features_lowlight = feature_extractor(images, lowlight)
+                features, features_lowlight = feature_extractor.get_features_maps(images, lowlight)
 
-            transfer_features = FAD_LLToClean(features_lowlight)
+            
+            
+            transfer_features = FAD_LLToClean(features_lowlight.view(features_lowlight.shape[0], -1))
 
             loss = 1 - metric(features, transfer_features).mean()
 

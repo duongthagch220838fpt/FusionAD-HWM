@@ -94,16 +94,15 @@ def infer(args):
         with torch.no_grad():
             # Extract features from both 2D images
             img1_features,img2_features = feature_extractor(img1, img2)  # Features from img2 (e.g., low-light image)
-            print(img2_features.shape)
+            
             # Project features from img2 into the same space as img1 using the FeatureProjectionMLP
             projected_img2_features = FAD_LLToClean(img2_features)  # FeatureProjectionMLP now projects between 2D features
-            print(projected_img2_features.shape)
+        
             # Mask invalid features (if necessary)
             feature_mask = (img2_features.sum(axis=-1) == 0)  # Mask for img2 features that are all zeros.
             # feature_mask = (img2_features.sum(dim=-1) == 0).unsqueeze(-1)  # Shape: (1, 785, 1)
 
 
-            print(feature_mask.shape)
             # Cosine distance between img1 features and projected img2 features
             cos_img1 = (torch.nn.functional.normalize(img1_features, dim=1) -
                         torch.nn.functional.normalize(img1_features, dim=1)).pow(2).sum(1).sqrt()

@@ -5,6 +5,7 @@ from sklearn.metrics import roc_auc_score
 from utils.metrics_utils import calculate_au_pro
 from models.ad_models import FeatureExtractors
 
+from torch.profiler import profile, record_function, ProfilerActivity
 
 dino_backbone_name = 'vit_base_patch8_224.dino' # 224/8 -> 28 patches.
 group_size = 128
@@ -51,10 +52,10 @@ class Multimodal2DFeatures(torch.nn.Module):
     def get_features_maps(self, rgb1, rgb2):
         # Ensure RGB inputs are on the correct device
         rgb1, rgb2 = rgb1.to(self.device), rgb2.to(self.device)
-
+        # print(rgb1.shape)
         # Extract feature maps from the 2 RGB images
         rgb_feature_maps1,rgb_feature_maps2 = self(rgb1, rgb2) 
-        print(rgb_feature_maps1.shape)
+        # print(rgb_feature_maps1.shape)
         # Check if rgb_feature_maps1 is a single tensor or a list of tensors
         # Check if rgb_feature_maps1 is a single tensor or a list of tensors
         if isinstance(rgb_feature_maps1, list):
@@ -68,7 +69,7 @@ class Multimodal2DFeatures(torch.nn.Module):
             rgb_patch2 = rgb_feature_maps2  # Use it directly if it's a single tensor
     
         # Resize the feature maps to 224x224
-        print("Shape of rgb_patch1 before resize:", rgb_patch1.shape)  # Expected (1, 785, 768) or similar
+        # print("Shape of rgb_patch1 before resize:", rgb_patch1.shape)  # Expected (1, 785, 768) or similar
 
         
         # Step 2: Interpolate to (224, 224)
@@ -76,13 +77,13 @@ class Multimodal2DFeatures(torch.nn.Module):
         # rgb_patch_upsample1 = torch.nn.functional.interpolate(rgb_patch1, size=(224, 224), mode='bilinear', align_corners=False)
         rgb_patch_upsample2 = torch.nn.functional.interpolate(rgb_patch2, size=(224, 224), mode='bilinear', align_corners=False)
 
-        print("Shape of rgb_patch_upsample1:", rgb_patch_upsample1.shape)  # Expect (1, 768, 224, 224
+        # print("Shape of rgb_patch_upsample1:", rgb_patch_upsample1.shape)  # Expect (1, 768, 224, 224
         # Step 3: Reshape to (H*W, C) which is (50176, 768)
         rgb_patch_final1 =  rgb_patch_upsample1.reshape(rgb_patch1.shape[1], -1).T
         # Step 3: Reshape to (H*W, C) which is (50176, 768)
         rgb_patch_final2 =  rgb_patch_upsample2.reshape(rgb_patch2.shape[1], -1).T
         # Print final shape for verification
-        print("Shape of rgb_patch_final1:", rgb_patch_final1.shape)  # Expect (50176, 768)
+        # print("Shape of rgb_patch_final1:", rgb_patch_final1.shape)  # Expect (50176, 768)
 
         return rgb_patch_final1, rgb_patch_final2
 
@@ -90,6 +91,8 @@ class Multimodal2DFeatures(torch.nn.Module):
     
 
 if __name__ == '__main__':
+
+
     model = Multimodal2DFeatures()
     rgb1 = torch.randn(1, 3, 224, 224)
     rgb1 = torch.randn(1, 3, 224, 224)
@@ -102,5 +105,5 @@ if __name__ == '__main__':
         rgb_patch_final2 = rgb_patch_final2.view(-1, rgb_patch_final2.shape[1])
 
     # Output the shape to confirm correctness
-    print("Shape of rgb_patch_final1:", rgb_patch_final1.shape)
-    print("Shape of rgb_patch_final2:", rgb_patch_final2.shape)
+    # print("Shape of rgb_patch_final1:", rgb_patch_final1.shape)
+    # print("Shape of rgb_patch_final2:", rgb_patch_final2.shape)

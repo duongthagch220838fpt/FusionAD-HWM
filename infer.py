@@ -51,7 +51,7 @@ def infer(args):
     # )
     test_dataset = TestDataset('data/Anomaly', 'data/gt', transform=common, low_light_transform=common)
 
-    test_loader = DataLoader(dataset = test_dataset, batch_size = 128, num_workers = 16)
+    test_loader = DataLoader(dataset = test_dataset, batch_size = 1, num_workers = 16)
     # Feature extractors.
     feature_extractor = Multimodal2DFeatures(image_size = 224)
     
@@ -77,7 +77,7 @@ def infer(args):
     weight_u = torch.ones(1, 1, w_u, w_u, device = device)/(w_u**2)
 
     predictions, gts = [], []
-    pixel_labels = [], []
+    pixel_labels = []
     image_preds, pixel_preds = [], []
 
 
@@ -93,7 +93,7 @@ def infer(args):
 
         with torch.no_grad():
             # Extract features from both 2D images
-            img1_features,img2_features = feature_extractor(img1, img2)  # Features from img2 (e.g., low-light image)
+            img1_features,img2_features = feature_extractor.get_features_maps(img1, img2)  # Features from img2 (e.g., low-light image)
             
             # Project features from img2 into the same space as img1 using the FeatureProjectionMLP
             projected_img2_features = FAD_LLToClean(img2_features)  # FeatureProjectionMLP now projects between 2D features
@@ -130,11 +130,11 @@ def infer(args):
             # cos_img2 = cos_img2.squeeze()  # Shape: (224, 224)
 
             # Combine the cosine distances from both feature sets
-            cos_comb = (cos_img1 * cos_img2)
-            print("Cos_comb")
-            print(cos_comb.shape)
-            print("Feature_mask")
-            print(feature_mask.shape)
+            cos_comb = (cos_img2)
+            # print("Cos_comb")
+            # print(cos_comb.shape)
+            # print("Feature_mask")
+            # print(feature_mask.shape)
             cos_comb.reshape(-1)[feature_mask] = 0.
 
             # Apply smoothing (similarly as before) using conv2d
@@ -155,18 +155,27 @@ def infer(args):
             # Prediction and ground-truth accumulation.
             gts.append(gt.squeeze().cpu().detach().numpy())  # (224, 224)
             predictions.append((cos_comb / (cos_comb[cos_comb != 0].mean())).cpu().detach().numpy())  # (224, 224)
-            
+            # print("cos_comb not shape")
+            # print(cos_comb)
             # GTs
             # image_labels.append()  # (1,)
             pixel_labels.extend(gt.flatten().cpu().detach().numpy())  # (50176,)
-
+            # print("PIXEL LABEL: ")
+            # print(pixel_labels[0])
             # Predictions
             # image_preds.append((cos_comb / torch.sqrt(cos_comb[cos_comb != 0].mean())).cpu().detach().numpy().max())  # single number
             pixel_preds.extend((cos_comb / torch.sqrt(cos_comb.mean())).flatten().cpu().detach().numpy())  # (224, 224)
+            # print("pixel_preds")
+            # print(pixel_preds[0])
 
             # Calculate AD&S metrics.
             au_pros, _ = calculate_au_pro(gts, predictions)
+
             pixel_rocauc = roc_auc_score(np.stack(pixel_labels), np.stack(pixel_preds))
+            # valid_indices = ~np.isnan(pixel_labels) & ~np.isnan(pixel_preds)
+            # pixel_labels_clean = np.array(pixel_labels)[valid_indices]
+            # pixel_preds_clean = np.array(pixel_preds)[valid_indices]
+            # pixel_rocauc = roc_auc_score(pixel_labels_clean, pixel_preds_clean)
             # image_rocauc = roc_auc_score(np.stack(image_labels), np.stack(image_preds))
 
             result_file_name = f'{args.quantitative_folder}/{args.class_name}_{args.epochs_no}ep_{args.batch_size}bs.md'

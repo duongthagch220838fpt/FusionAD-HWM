@@ -3,7 +3,7 @@ import torch.nn as nn
 import timm
 from timm.models.layers import DropPath
 # from pointnet2_ops import pointnet2_utils
-
+from torch.profiler import profile, record_function, ProfilerActivity
 
 class FeatureExtractors(torch.nn.Module):
     def __init__(self, device,
@@ -46,7 +46,7 @@ class FeatureExtractors(torch.nn.Module):
         x = self.rgb_backbone.blocks(x)
         x = self.rgb_backbone.norm(x)
         # This reshaping feat return a 4D tensor with shape (1, 768, 28, 28) respresent a batch of  28x28 image
-        feat = x[:, 1:].permute(0, 2, 1).view(
+        feat = x[:, 1:].permute(0, 2, 1).reshape(
             1, -1, 28, 28)  # view(1, -1, 14, 14)
         return feat
 
@@ -56,7 +56,7 @@ class FeatureExtractors(torch.nn.Module):
         x = self.rgb_backbone.norm_pre(x)
         x = self.rgb_backbone.blocks(x)
         x = self.rgb_backbone.norm(x) # (1, 785 , 768)
-        feat = x[:, 1:].permute(0, 2, 1).view(
+        feat = x[:, 1:].permute(0, 2, 1).reshape(
             1, -1, 28, 28) # (1, 768, 28, 28)
 
           # view(1, -1, 14, 14)
@@ -395,3 +395,23 @@ class PointTransformer(nn.Module):
             else:
                 x = feature_list[-1]
             return x, center, ori_idx, center_idx
+
+
+if __name__ == '__main__':
+
+    model = FeatureExtractors(device='cuda')
+    model.eval()
+
+    inputs = torch.rand(4, 3, 224, 224)
+    inputs.to('cuda')
+    out = model(inputs, inputs)
+    print(out[0].shape)
+
+    # model = FeatureExtractors(device='CPU')
+    # model.eval()
+    # inputs = torch.rand(1, 3, 224, 224)
+    # with profile(activities=[ProfilerActivity.CPU],
+    #              profile_memory=True, record_shapes=True) as prof:
+    #     model(inputs, inputs)
+    #
+    # print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=30))

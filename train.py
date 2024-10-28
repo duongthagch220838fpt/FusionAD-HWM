@@ -1,5 +1,5 @@
 import argparse
-
+from torch.profiler import profile, record_function, ProfilerActivity
 import os
 import torch
 import wandb
@@ -46,10 +46,12 @@ def train(args):
     )
 
     # Dataloader.
-    train_loader = get_dataloader(args.dataset_path, common, common, 64, 16, True)
+    train_loader = get_dataloader(args.dataset_path, common, common, 4, 16, True)
 
     # Feature extractors.
-    feature_extractor = Multimodal2DFeatures(device=device)
+    feature_extractor = Multimodal2DFeatures()
+
+
 
     # Model instantiation.
     FAD_LLToClean = FeatureProjectionMLP(in_features=768, out_features=768)
@@ -70,14 +72,30 @@ def train(args):
             tqdm(train_loader, desc=f"Epoch {epoch + 1}/{args.epochs_no}")
         ):
             images, lowlight = images.to(device), lowlight.to(device)
-            with torch.no_grad():
-                features, features_lowlight = feature_extractor.get_features_maps(images, lowlight)
 
-            
-            
-            transfer_features = FAD_LLToClean(features_lowlight.view(features_lowlight.shape[0], -1))
+            # features, features_lowlight = feature_extractor.get_features_maps(images, lowlight)
 
-            loss = 1 - metric(features, transfer_features).mean()
+            if args.batch_size == 1:
+                images, low_light = feature_extractor.get_features_maps(images, lowlight)
+            else:
+                rgb_patches = []
+                xyz_patches = []
+
+                for i in range(images.shape[0]):
+                    rgb_patch, xyz_patch = feature_extractor.get_features_maps(images[i].unsqueeze(dim=0),
+                                                                               lowlight[i].unsqueeze(dim=0))
+
+                    rgb_patches.append(rgb_patch)
+                    xyz_patches.append(xyz_patch)
+
+                images = torch.stack(rgb_patches, dim=0)
+                low_light = torch.stack(xyz_patches, dim=0)
+
+            transfer_features = FAD_LLToClean(low_light)
+
+            low_light_mask = (low_light.sum(axis=-1) == 0)
+            loss = 1 - metric(transfer_features[~low_light_mask], low_light[~low_light_mask]).mean()
+            # loss = 1 - metric(images, transfer_features).mean()
 
             epoch_cos_sim.append(loss.item())
             if not torch.isnan(loss) and not torch.isinf(loss):
@@ -136,7 +154,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--epochs_no", default=10, type=int, help="Number of epochs to train the FADs."
+        "--epochs_no", default=5, type=int, help="Number of epochs to train the FADs."
     )
 
     parser.add_argument(

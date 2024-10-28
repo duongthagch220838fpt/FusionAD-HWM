@@ -1,4 +1,5 @@
 import torch
+from torch.profiler import profile, record_function, ProfilerActivity
 
 class FeatureProjectionMLP(torch.nn.Module):
     def __init__(self, in_features = None, out_features = None, act_layer = torch.nn.GELU):
@@ -55,3 +56,16 @@ class FeatureProjectionMLP_big(torch.nn.Module):
         x = self.output(x)
 
         return x
+
+if __name__ == '__main__':
+
+    model = FeatureProjectionMLP(768,768)
+    model.eval()
+    inputs = torch.rand(50176, 768)
+    with profile(activities=[ProfilerActivity.CPU],
+                 profile_memory=True, record_shapes=True) as prof:
+
+        model(inputs)
+
+
+    print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=10))

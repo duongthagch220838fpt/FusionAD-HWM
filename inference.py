@@ -71,7 +71,7 @@ def infer_FAD(args):
             rgb_patch, xyz_patch = feature_extractor.get_features_maps(rgb, pc)
         
             rgb_feat_pred = FAD_3Dto2D(xyz_patch)
-            xyz_feat_pred = FAD_2Dto3D(rgb_patch)
+            xyz_feat_pred = FAD_2Dto3D(rgb_patch) # 768
 
             xyz_mask = (xyz_patch.sum(axis = -1) == 0) # Mask only the feature vectors that are 0 everywhere.
 

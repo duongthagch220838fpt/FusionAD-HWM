@@ -46,9 +46,9 @@ class FeatureExtractors(torch.nn.Module):
         x = self.rgb_backbone.blocks(x)
         x = self.rgb_backbone.norm(x)
         # This reshaping feat return a 4D tensor with shape (1, 768, 28, 28) respresent a batch of  28x28 image
-        # feat = x[:, 1:].permute(0, 2, 1).view(
-        #     1, -1, 28, 28)  # view(1, -1, 14, 14)
-        return x
+        feat = x[:, 1:].permute(0, 2, 1).view(
+            1, -1, 28, 28)  # view(1, -1, 14, 14)
+        return feat
 
     def forward_rgb_features_noise(self, x):
         x = self.rgb_backbone.patch_embed(x)
@@ -57,9 +57,9 @@ class FeatureExtractors(torch.nn.Module):
         x = self.rgb_backbone.blocks(x)
         x = self.rgb_backbone.norm(x)
 
-        # feat = x[:, 1:].permute(0, 2, 1).view(
-        #     1, -1, 28, 28)  # view(1, -1, 14, 14)
-        return x
+        feat = x[:, 1:].permute(0, 2, 1).view(
+            1, -1, 28, 28)  # view(1, -1, 14, 14)
+        return feat
 
     def forward(self, rgb, rgb_noise):
         rgb_features = self.forward_rgb_features(rgb)

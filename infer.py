@@ -12,6 +12,7 @@ from models.features import MultimodalFeatures
 # from models.dataset import get_data_loader
 from models.feature_transfer_nets import FeatureProjectionMLP, FeatureProjectionMLP_big
 from models.ad_models import FeatureExtractors
+from models.features2d import Multimodal2DFeatures
 from utils.metrics_utils import calculate_au_pro
 from sklearn.metrics import roc_auc_score
 from dataset2D import SquarePad, TestDataset
@@ -48,13 +49,11 @@ def infer(args):
     # test_loader = get_dataloader(
     #     "Anomaly", class_name=args.class_name, img_size=224, dataset_path=args.dataset_path
     # )
-
     test_dataset = TestDataset('data/Anomaly', 'data/gt', transform=common, low_light_transform=common)
 
     test_loader = DataLoader(dataset = test_dataset, batch_size = 128, num_workers = 16)
-
     # Feature extractors.
-    feature_extractor = FeatureExtractors(device=device)
+    feature_extractor = Multimodal2DFeatures(image_size = 224)
     
 
     # Model instantiation.
@@ -94,7 +93,7 @@ def infer(args):
 
         with torch.no_grad():
             # Extract features from both 2D images
-            img1_features,img2_features = feature_extractor(img1, img2)  # Features from img2 (e.g., low-light image)
+            img1_features,img2_features = feature_extractor.get_features_maps(img1, img2)  # Features from img2 (e.g., low-light image)
             print(img2_features.shape)
             # Project features from img2 into the same space as img1 using the FeatureProjectionMLP
             projected_img2_features = FAD_LLToClean(img2_features)  # FeatureProjectionMLP now projects between 2D features
@@ -106,10 +105,10 @@ def infer(args):
 
             print(feature_mask.shape)
             # Cosine distance between img1 features and projected img2 features
-            cos_img1 = (torch.nn.functional.normalize(img1_features, dim=-1) -
-                        torch.nn.functional.normalize(img1_features, dim=-1)).pow(2).sum(-1).sqrt()
+            cos_img1 = (torch.nn.functional.normalize(img1_features, dim=1) -
+                        torch.nn.functional.normalize(img1_features, dim=1)).pow(2).sum(1).sqrt()
             cos_img2 = (torch.nn.functional.normalize(projected_img2_features, dim=1) -
-                        torch.nn.functional.normalize(img2_features, dim=-1)).pow(2).sum(-1).sqrt()
+                        torch.nn.functional.normalize(img2_features, dim=1)).pow(2).sum(1).sqrt()
 
 
 
@@ -118,18 +117,18 @@ def infer(args):
             cos_img1[feature_mask] = 0.
             # cos_img1[feature_mask.squeeze(-1)] = 0
 
-            # cos_img1 = cos_img1.reshape(224, 224)
-            cos_img1 = cos_img1.view(1, 1, 155, 157)  # Reshape for interpolation
-            cos_img1 = torch.nn.functional.interpolate(cos_img1, size=(224, 224), mode="bilinear", align_corners=False)
-            cos_img1 = cos_img1.squeeze()  # Shape: (224, 224)
+            cos_img1 = cos_img1.reshape(224, 224)
+            # cos_img1 = cos_img1.view(1, 1, 155, 157)  # Reshape for interpolation
+            # cos_img1 = torch.nn.functional.interpolate(cos_img1, size=(224, 224), mode="bilinear", align_corners=False)
+            # cos_img1 = cos_img1.squeeze()  # Shape: (224, 224)
 
 
             cos_img2[feature_mask] = 0.
-            # cos_img2 = cos_img2.reshape(224, 224)
+            cos_img2 = cos_img2.reshape(224, 224)
 
-            cos_img2 = cos_img2.view(1, 1, 155, 157)  # Reshape for interpolation
-            cos_img2 = torch.nn.functional.interpolate(cos_img2, size=(224, 224), mode="bilinear", align_corners=False)
-            cos_img2 = cos_img2.squeeze()  # Shape: (224, 224)
+            # cos_img2 = cos_img2.view(1, 1, 155, 157)  # Reshape for interpolation
+            # cos_img2 = torch.nn.functional.interpolate(cos_img2, size=(224, 224), mode="bilinear", align_corners=False)
+            # cos_img2 = cos_img2.squeeze()  # Shape: (224, 224)
 
             # Combine the cosine distances from both feature sets
             cos_comb = (cos_img1 * cos_img2)

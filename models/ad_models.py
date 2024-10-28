@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import timm
 from timm.models.layers import DropPath
-from pointnet2_ops import pointnet2_utils
+# from pointnet2_ops import pointnet2_utils
 
 
 class FeatureExtractors(torch.nn.Module):

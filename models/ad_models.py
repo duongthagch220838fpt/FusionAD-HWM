@@ -55,10 +55,11 @@ class FeatureExtractors(torch.nn.Module):
         x = self.rgb_backbone._pos_embed(x)
         x = self.rgb_backbone.norm_pre(x)
         x = self.rgb_backbone.blocks(x)
-        x = self.rgb_backbone.norm(x)
-
+        x = self.rgb_backbone.norm(x) # (1, 785 , 768)
         feat = x[:, 1:].permute(0, 2, 1).view(
-            1, -1, 28, 28)  # view(1, -1, 14, 14)
+            1, -1, 28, 28) # (1, 768, 28, 28)
+
+          # view(1, -1, 14, 14)
         return feat
 
     def forward(self, rgb, rgb_noise):

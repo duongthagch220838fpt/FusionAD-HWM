@@ -93,7 +93,7 @@ def infer(args):
 
         with torch.no_grad():
             # Extract features from both 2D images
-            img1_features,img2_features = feature_extractor.get_features_maps(img1, img2)  # Features from img2 (e.g., low-light image)
+            img1_features,img2_features = feature_extractor(img1, img2)  # Features from img2 (e.g., low-light image)
             print(img2_features.shape)
             # Project features from img2 into the same space as img1 using the FeatureProjectionMLP
             projected_img2_features = FAD_LLToClean(img2_features)  # FeatureProjectionMLP now projects between 2D features

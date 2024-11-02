@@ -18,8 +18,8 @@ class LowLightDataset(Dataset):
             transform (callable, optional): Optional transform to be applied to both original and low-light images.
             low_light_transform (callable, optional): Transform to apply to simulate low-light conditions.
         """
-        self.low_light_path = os.path.join(image_folder, "Low_light")
-        self.well_light_path = os.path.join(image_folder, "Well_light")
+        self.low_light_path = os.path.join(image_folder, "low-light")
+        self.well_light_path = os.path.join(image_folder, "well-light")
 
         self.IMAGENET_MEAN = [0.485, 0.456, 0.406]
         self.IMAGENET_STD = [0.229, 0.224, 0.225]
@@ -71,8 +71,8 @@ class TestDataset(Dataset):
             low_light_transform (callable, optional): Transform to apply to low-light images.
             extensions (str): Image file extension for low-light and well-lit images.
         """
-        self.low_light_path = os.path.join(data_folder, "Low_light")
-        self.well_light_path = os.path.join(data_folder, "Well_light")
+        self.low_light_path = os.path.join(data_folder, "low-light")
+        self.well_light_path = os.path.join(data_folder, "well-light")
         self.gt_folder = gt_folder
 
         self.transform = transform
@@ -101,7 +101,8 @@ class TestDataset(Dataset):
         # Load the low-light and well-lit images
         img_low_name = self.low_light_images[idx]
         img_high_name = self.well_lit_images[idx]
-
+        path_image_low = os.path.join(self.low_light_path, img_low_name)
+        path_image_high = os.path.join(self.well_light_path, img_high_name)
         image_low = Image.open(os.path.join(self.low_light_path, img_low_name)).convert('RGB')
         image_high = Image.open(os.path.join(self.well_light_path, img_high_name)).convert('RGB')
 
@@ -124,7 +125,7 @@ class TestDataset(Dataset):
         # Convert ground truth mask to tensor
         gt_mask = self.gt_transform(gt_mask)
 
-        return original_image, low_light_image, gt_mask
+        return original_image, low_light_image, gt_mask, path_image_low, path_image_high
 
 def show_images(original, low_light):
     # Convert from Tensor to NumPy and reshape for display
@@ -153,7 +154,7 @@ def get_dataloader(image_folder, transform, low_light_transform, batch_size=1, n
     return data_loader
 if __name__ == '__main__':
     # Sample image paths
-    image_paths = "data/Normal"
+    image_paths = "old_data/Normal"
 
     # Create the common transform
     common_transform = T.Compose([

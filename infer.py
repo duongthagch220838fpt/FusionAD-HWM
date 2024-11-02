@@ -49,7 +49,7 @@ def infer(args):
     # test_loader = get_dataloader(
     #     "Anomaly", class_name=args.class_name, img_size=224, dataset_path=args.dataset_path
     # )
-    test_dataset = TestDataset('data/Anomaly', 'data/gt', transform=common, low_light_transform=common)
+    test_dataset = TestDataset('data/medicine/anomaly', 'data/medicine/gt', transform=common, low_light_transform=common)
 
     test_loader = DataLoader(dataset = test_dataset, batch_size = 1, num_workers = 16)
     # Feature extractors.
@@ -62,7 +62,7 @@ def infer(args):
 
     FAD_LLToClean.to(device)
     feature_extractor.to(device)
-    FAD_LLToClean.load_state_dict(torch.load("/home/tanpx/PycharmProjects/FusionADver2/FusionAD-DuongMinh/checkpoints/Bowl/FAD_LLToClean_Bowl_10ep_4bs.pth"))
+    FAD_LLToClean.load_state_dict(torch.load("/home/tanpx/PycharmProjects/FusionADver2/FusionAD-DuongMinh/checkpoints/Medicine/FAD_LLToClean_Medicine_50ep_4bs.pth"))
 
     FAD_LLToClean.eval()
     feature_extractor.eval()
@@ -86,9 +86,9 @@ def infer(args):
 # ------------ [Testing Loop] ------------ #
 
 # * Return (img1, img2), gt[:1], label, img_path where img1 and img2 are both 2D images.
-    for img1, img2, gt in  tqdm(test_loader, desc=f'Extracting feature from class: {args.class_name}.'):
+    for img1, img2, gt, path_image_low, path_image_high in  tqdm(test_loader, desc=f'Extracting feature from class: {args.class_name}.'):
 
-        # Move data to the GPU (or whatever device is being used)
+        # Move old_data to the GPU (or whatever device is being used)
         img1, img2 = img1.to(device), img2.to(device)
 
         with torch.no_grad():
@@ -167,8 +167,60 @@ def infer(args):
             pixel_preds.extend((cos_comb / torch.sqrt(cos_comb.mean())).flatten().cpu().detach().numpy())  # (224, 224)
             # print("pixel_preds")
             # print(pixel_preds[0])
+            if args.produce_qualitatives:
 
-            # Calculate AD&S metrics.
+                defect_class_str = path_image_low[0].split('/')[-4]
+                image_name_str = path_image_low[0].split('/')[-1]
+
+                # save_path = f'{args.qualitative_folder}/{args.class_name}_{args.epochs_no}ep_{args.batch_size}bs/{defect_class_str}'
+                save_path = f'{args.qualitative_folder}/medicine_1_1/{defect_class_str}'
+
+                if not os.path.exists(save_path):
+                    os.makedirs(save_path)
+
+                fig, axs = plt.subplots(2,3, figsize = (7,7))
+
+                denormalize = T.Compose([
+                    T.Normalize(mean = [0., 0., 0.], std = [1/0.229, 1/0.224, 1/0.225]),
+                    T.Normalize(mean = [-0.485, -0.456, -0.406], std = [1., 1., 1.]),
+                    ])
+
+                rgb = denormalize(img2)
+
+                os.path.join(save_path, image_name_str)
+
+                axs[0, 0].imshow(rgb.squeeze().permute(1,2,0).cpu().detach().numpy())
+                axs[0, 0].set_title('RGB')
+
+                axs[0, 1].imshow(gt.squeeze().cpu().detach().numpy())
+                axs[0, 1].set_title('Ground-truth')
+
+
+
+                axs[1, 1].imshow(cos_img2.cpu().detach().numpy(), cmap=plt.cm.jet)
+                axs[1, 1].set_title('2D Cosine Similarity')
+
+                axs[1, 2].imshow(cos_comb.cpu().detach().numpy(), cmap=plt.cm.jet)
+                axs[1, 2].set_title('Combined Cosine Similarity')
+
+                # Remove ticks and labels from all subplots
+                for ax in axs.flat:
+                    ax.set_xticks([])
+                    ax.set_yticks([])
+                    ax.set_xticklabels([])
+                    ax.set_yticklabels([])
+
+                # Adjust the layout and spacing
+                plt.tight_layout()
+
+                plt.savefig(os.path.join(save_path, image_name_str), dpi = 256)
+
+                if args.visualize_plot:
+                    plt.show()
+                    plt.pause(5)
+                    plt.close()
+
+                    # Calculate AD&S metrics.
             au_pros, _ = calculate_au_pro(gts, predictions)
 
             pixel_rocauc = roc_auc_score(np.stack(pixel_labels), np.stack(pixel_preds))
@@ -203,6 +255,10 @@ if __name__ == '__main__':
     parser.add_argument('--dataset_path', default='./datasets/mvtec3d', type=str,
                         help='Dataset path.')
 
+    parser.add_argument('--qualitative_folder', default = './results/qualitatives_medicine', type = str,
+                        help = 'Path to the folder in which to save the qualitatives.')
+
+
     parser.add_argument('--class_name', default=None, type=str,
                         choices=["bagel", "cable_gland", "carrot", "cookie", "dowel", "foam", "peach", "potato", "rope",
                                  "tire",
@@ -213,11 +269,9 @@ if __name__ == '__main__':
     parser.add_argument('--checkpoint_folder', default='./checkpoints/checkpoints_FAD_mvtec', type=str,
                         help='Path to the folder containing FADs checkpoints.')
 
-    parser.add_argument('--qualitative_folder', default='./results/qualitatives_mvtec', type=str,
-                        help='Path to the folder in which to save the qualitatives.')
 
-    parser.add_argument('--quantitative_folder', default='./results/quantitatives_mvtec', type=str,
-                        help='Path to the folder in which to save the quantitatives.')
+    parser.add_argument('--quantitative_folder', default = './results/quantitatives_medicine', type = str,
+                        help = 'Path to the folder in which to save the quantitatives.')
 
     parser.add_argument('--epochs_no', default=50, type=int,
                         help='Number of epochs to train the FADs.')
@@ -228,7 +282,7 @@ if __name__ == '__main__':
     parser.add_argument('--visualize_plot', default=False, action='store_true',
                         help='Whether to show plot or not.')
 
-    parser.add_argument('--produce_qualitatives', default=False, action='store_true',
+    parser.add_argument('--produce_qualitatives', default=True, action='store_true',
                         help='Whether to produce qualitatives or not.')
 
     args = parser.parse_args()

@@ -124,7 +124,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--dataset_path", default="data/Normal", type=str, help="Dataset path."
+        "--dataset_path", default="data/medicine/normal", type=str, help="Dataset path."
     )
 
     parser.add_argument(
@@ -136,7 +136,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--class_name",
-        default="Bowl",
+        default="Medicine",
         type=str,
         choices=[
             "bagel",
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--epochs_no", default=5, type=int, help="Number of epochs to train the FADs."
+        "--epochs_no", default=50, type=int, help="Number of epochs to train the FADs."
     )
 
     parser.add_argument(

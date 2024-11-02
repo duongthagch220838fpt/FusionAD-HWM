@@ -42,10 +42,10 @@ def square_distance(src, dst):
 def index_points(points, idx):
     """
     Input:
-        points: input points data, [B, N, C]
-        idx: sample index data, [B, S]
+        points: input points old_data, [B, N, C]
+        idx: sample index old_data, [B, S]
     Return:
-        new_points:, indexed points data, [B, S, C]
+        new_points:, indexed points old_data, [B, S, C]
     """
 
     device = points.device
@@ -62,7 +62,7 @@ def index_points(points, idx):
 def farthest_point_sample(xyz, npoint):
     """
     Input:
-        xyz: pointcloud data, [B, N, 3]
+        xyz: pointcloud old_data, [B, N, 3]
         npoint: number of samples
     Return:
         centroids: sampled pointcloud index, [B, npoint]
@@ -112,11 +112,11 @@ def sample_and_group(npoint, radius, nsample, xyz, points, returnfps=False):
         npoint:
         radius:
         nsample:
-        xyz: input points position data, [B, N, 3]
-        points: input points data, [B, N, D]
+        xyz: input points position old_data, [B, N, 3]
+        points: input points old_data, [B, N, D]
     Return:
-        new_xyz: sampled points position data, [B, npoint, nsample, 3]
-        new_points: sampled points data, [B, npoint, nsample, 3+D]
+        new_xyz: sampled points position old_data, [B, npoint, nsample, 3]
+        new_points: sampled points old_data, [B, npoint, nsample, 3+D]
     """
     B, N, C = xyz.shape
     S = npoint
@@ -140,11 +140,11 @@ def sample_and_group(npoint, radius, nsample, xyz, points, returnfps=False):
 def sample_and_group_all(xyz, points):
     """
     Input:
-        xyz: input points position data, [B, N, 3]
-        points: input points data, [B, N, D]
+        xyz: input points position old_data, [B, N, 3]
+        points: input points old_data, [B, N, D]
     Return:
-        new_xyz: sampled points position data, [B, 1, 3]
-        new_points: sampled points data, [B, 1, N, 3+D]
+        new_xyz: sampled points position old_data, [B, 1, 3]
+        new_points: sampled points old_data, [B, 1, N, 3+D]
     """
     device = xyz.device
     B, N, C = xyz.shape
@@ -160,11 +160,11 @@ def sample_and_group_all(xyz, points):
 def interpolating_points(xyz1, xyz2, points2):
     """
     Input:
-        xyz1: input points position data, [B, C, N]
-        xyz2: sampled input points position data, [B, C, S]
-        points2: input points data, [B, D, S]
+        xyz1: input points position old_data, [B, C, N]
+        xyz2: sampled input points position old_data, [B, C, S]
+        points2: input points old_data, [B, D, S]
     Return:
-        new_points: upsampled points data, [B, D', N]
+        new_points: upsampled points old_data, [B, D', N]
     """
     xyz1 = xyz1.permute(0, 2, 1)
     xyz2 = xyz2.permute(0, 2, 1)

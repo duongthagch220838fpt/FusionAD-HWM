@@ -107,3 +107,12 @@ if __name__ == '__main__':
     # Output the shape to confirm correctness
     # print("Shape of rgb_patch_final1:", rgb_patch_final1.shape)
     # print("Shape of rgb_patch_final2:", rgb_patch_final2.shape)
+    #
+    # model = FeatureExtractors(device='CPU')
+    # model.eval()
+    # inputs = torch.rand(1, 3, 512, 512)
+    # with profile(activities=[ProfilerActivity.CPU],
+    #              profile_memory=True, record_shapes=True) as prof:
+    #     model(inputs, inputs)
+    #
+    # print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=30))

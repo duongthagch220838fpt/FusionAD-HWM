@@ -5,6 +5,7 @@ processing/__pycache__
 datasets
 checkpoints
 wandb
-results
 Energizer-AAA-2.jpg
 test.py
+old_data
+data

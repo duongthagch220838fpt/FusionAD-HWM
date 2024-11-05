@@ -13,7 +13,8 @@ class ACMF(nn.Module):
 
     def forward(self, F_img_t, F_evt_t):
         # Merge image and event features
-        x = torch.cat([F_img_t, F_evt_t], dim=1)
+        x = torch.cat([F_img_t, F_evt_t], dim=0)
+        print(x.shape)
         x = self.conv1(x)
 
         # Apply channel-attention and spatial-attention
@@ -90,3 +91,20 @@ class LightSpatialAttn(nn.Module):
         x_attn = 0.5 * x.mean(dim=1, keepdim=True) + 0.5 * x.amax(dim=1, keepdim=True)
         x_attn = self.conv(x_attn)
         return x * self.gate(x_attn)
+    
+if __name__ == '__main__':
+    # Define a dummy input for testing
+    batch_size = 1
+    in_channels_img = 768
+    in_channels_evt = 768
+    height = 256
+    width = 256
+
+    F_img_t = torch.randn(batch_size, 768)
+    F_evt_t = torch.randn(batch_size, 768)
+
+    # Initialize the ACMF module
+    acmf = ACMF(in_channels_img, in_channels_evt)
+    # Test the forward pass
+    output = acmf(F_img_t, F_evt_t)
+    print(output.shape)

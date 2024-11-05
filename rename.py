@@ -49,16 +49,15 @@ def check_file_alignment(directory_path, gt_path=None):
     low_light_files = {os.path.splitext(f)[0] for f in os.listdir(low_light_path)}
     
     # If gt_path is provided, include it in the comparison
+
     if gt_path:
-        gt_path_full = os.path.join(directory_path, gt_path)
-        
         # Check if the gt directory exists
-        if not os.path.exists(gt_path_full):
+        if not os.path.exists(gt_path):
             print(f"The 'gt' directory '{gt_path}' does not exist.")
             return
         
         # List base filenames in gt directory
-        gt_files = {os.path.splitext(f)[0] for f in os.listdir(gt_path_full)}
+        gt_files = {os.path.splitext(f)[0] for f in os.listdir(gt_path)}
         
         # Check for alignment across all three directories
         if well_light_files == low_light_files == gt_files:
@@ -87,7 +86,7 @@ def check_file_alignment(directory_path, gt_path=None):
     else:
         # Check for alignment between just well-light and low-light
         if well_light_files == low_light_files:
-            print("All files are aligned between 'well-light' and 'low-light' directories.")
+            print("All files are aligned between 'Well-light' and 'Low-light' directories.")
         else:
             # Find mismatched files between well-light and low-light
             missing_in_well = low_light_files - well_light_files
@@ -95,12 +94,12 @@ def check_file_alignment(directory_path, gt_path=None):
             
             # Report misalignments
             if missing_in_well:
-                print("Files present in 'low-light' but missing in 'well-light':")
+                print("Files present in 'Low-light' but missing in 'Well-light':")
                 for file in missing_in_well:
                     print(f" - {file}")
             
             if missing_in_low:
-                print("Files present in 'well-light' but missing in 'low-light':")
+                print("Files present in 'Well-light' but missing in 'Low-light':")
                 for file in missing_in_low:
                     print(f" - {file}")
 
@@ -111,7 +110,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Check file alignment between well-light and low-light folders')
     parser.add_argument('directory_path', type=str, help='Path to the directory containing well-light and low-light folders', default='data')
-    parser.add_argument('--gt_path', type=str, help='Path to the directory containing ground truth images', default='gt')
+    parser.add_argument('--gt_path', type=str, help='Path to the directory containing ground truth images', default='data/bowl')
     args = parser.parse_args()
     # Folder structure is as follows:
     # data
@@ -135,5 +134,5 @@ if __name__ == '__main__':
     rename_folders(os.path.join(args.directory_path, 'Normal'), rename_map)
 
     if args.gt_path:
-        check_file_alignment(os.path.join(args.directory_path, 'Anomaly'), os.path.join(args.directory_path, 'gt'))
-        check_file_alignment(os.path.join(args.directory_path, 'Normal'))
+        check_file_alignment(os.path.join(args.directory_path, 'Anomaly'), os.path.join(args.gt_path, 'gt'))
+        check_file_alignment(os.path.join(args.directory_path,'Normal'))

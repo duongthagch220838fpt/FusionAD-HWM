@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 
 from models.features import MultimodalFeatures
+
 # from models.dataset import get_data_loader
 from models.feature_transfer_nets import FeatureProjectionMLP, FeatureProjectionMLP_big
 from models.ad_models import FeatureExtractors
@@ -49,10 +50,11 @@ def infer(args):
     # test_loader = get_dataloader(
     #     "Anomaly", class_name=args.class_name, img_size=224, dataset_path=args.dataset_path
     # )
-    path_gt = args.dataset_path + args.class_name + '/gt'
-    path_anomaly = args.dataset_path + args.class_name + '/anomaly'
+    path_gt = args.dataset_path + args.class_name + "/gt"
+    path_anomaly = args.dataset_path + args.class_name + "/anomaly"
     test_dataset = TestDataset(
-        path_anomaly, path_gt, transform=common, low_light_transform=common)
+        path_anomaly, path_gt, transform=common, low_light_transform=common
+    )
 
     test_loader = DataLoader(dataset=test_dataset,
                              batch_size=1, num_workers=16)
@@ -64,8 +66,12 @@ def infer(args):
 
     FAD_LLToClean.to(device)
     feature_extractor.to(device)
-    FAD_LLToClean.load_state_dict(torch.load(
-        args.checkpoint_folder + f'/{args.class_name}_{args.epochs_no}ep_{args.batch_size_train}bs.pth'))
+    FAD_LLToClean.load_state_dict(
+        torch.load(
+            args.checkpoint_folder
+            + f"/{args.class_name}_{args.epochs_no}ep_{args.batch_size_train}bs.pth"
+        )
+    )
 
     FAD_LLToClean.eval()
     feature_extractor.eval()
@@ -85,18 +91,20 @@ def infer(args):
 
     # Inference.
     # Assuming FeatureExtractor is for 2D images, and we use one FeatureProjectionMLP for projection.
-# ------------ [Testing Loop] ------------ #
+    # ------------ [Testing Loop] ------------ #
 
-# * Return (img1, img2), gt[:1], label, img_path where img1 and img2 are both 2D images.
-    for img1, img2, gt, path_image_low, path_image_high in tqdm(test_loader, desc=f'Extracting feature from class: {args.class_name}.'):
-
+    # * Return (img1, img2), gt[:1], label, img_path where img1 and img2 are both 2D images.
+    for img1, img2, gt, path_image_low, path_image_high in tqdm(
+        test_loader, desc=f"Extracting feature from class: {args.class_name}."
+    ):
         # Move old_data to the GPU (or whatever device is being used)
         img1, img2 = img1.to(device), img2.to(device)
 
         with torch.no_grad():
             # Extract features from both 2D images
             img1_features, img2_features = feature_extractor.get_features_maps(
-                img1, img2)  # Features from img2 (e.g., low-light image)
+                img1, img2
+            )  # Features from img2 (e.g., low-light image)
 
             # Project features from img2 into the same space as img1 using the FeatureProjectionMLP
             # FeatureProjectionMLP now projects between 2D features
@@ -104,14 +112,22 @@ def infer(args):
 
             # Mask invalid features (if necessary)
             # Mask for img2 features that are all zeros.
-            feature_mask = (img2_features.sum(axis=-1) == 0)
+            feature_mask = img2_features.sum(axis=-1) == 0
             # feature_mask = (img2_features.sum(dim=-1) == 0).unsqueeze(-1)  # Shape: (1, 785, 1)
 
             # Cosine distance between img1 features and projected img2 features
-            cos_img2 = (torch.nn.functional.normalize(projected_img2_features, dim=1) -
-                        torch.nn.functional.normalize(img1_features, dim=1)).pow(2).sum(1).sqrt()
+            cos_img2 = (
+                (
+                    torch.nn.functional.normalize(
+                        projected_img2_features, dim=1)
+                    - torch.nn.functional.normalize(img1_features, dim=1)
+                )
+                .pow(2)
+                .sum(1)
+                .sqrt()
+            )
 
-            cos_img2[feature_mask] = 0.
+            cos_img2[feature_mask] = 0.0
             cos_img2 = cos_img2.reshape(224, 224)
 
             # cos_img2 = cos_img2.view(1, 1, 155, 157)  # Reshape for interpolation
@@ -145,7 +161,9 @@ def infer(args):
             gts.append(gt.squeeze().cpu().detach().numpy())  # (224, 224)
             predictions.append(
                 # (224, 224)
-                (cos_img2 / (cos_img2[cos_img2 != 0].mean())).cpu().detach().numpy())
+                (cos_img2 / (cos_img2[cos_img2 != 0].mean())
+                 ).cpu().detach().numpy()
+            )
             # print("cos_comb not shape")
             # print(cos_comb)
             # GTs
@@ -156,31 +174,39 @@ def infer(args):
             # print(pixel_labels[0])
             # Predictions
             # image_preds.append((cos_comb / torch.sqrt(cos_comb[cos_comb != 0].mean())).cpu().detach().numpy().max())  # single number
-            pixel_preds.extend((cos_img2 / torch.sqrt(cos_img2.mean())
-                                # (224, 224)
-                                ).flatten().cpu().detach().numpy())
+            pixel_preds.extend(
+                (
+                    cos_img2 / torch.sqrt(cos_img2.mean())
+                    # (224, 224)
+                )
+                .flatten()
+                .cpu()
+                .detach()
+                .numpy()
+            )
             # print("pixel_preds")
             # print(pixel_preds[0])
             if args.produce_qualitatives:
+                defect_class_str = path_image_low[0].split("/")[-4]
+                image_name_str = path_image_low[0].split("/")[-1]
 
-                defect_class_str = path_image_low[0].split('/')[-4]
-                image_name_str = path_image_low[0].split('/')[-1]
-
-                # save_path = f'{args.qualitative_folder}/{args.class_name}_{args.epochs_no}ep_{args.batch_size}bs/{defect_class_str}'
-                save_path = f'{
-                    args.qualitative_folder}/medicine_1_1/{defect_class_str}'
+                save_path = f'{args.qualitative_folder}/{args.class_name}_{args.epochs_no}bs/{defect_class_str}'
+                
 
                 if not os.path.exists(save_path):
                     os.makedirs(save_path)
 
                 fig, axs = plt.subplots(2, 2, figsize=(7, 7))
 
-                denormalize = T.Compose([
-                    T.Normalize(mean=[0., 0., 0.], std=[
-                                1/0.229, 1/0.224, 1/0.225]),
-                    T.Normalize(mean=[-0.485, -0.456, -0.406],
-                                std=[1., 1., 1.]),
-                ])
+                denormalize = T.Compose(
+                    [
+                        T.Normalize(
+                            mean=[0.0, 0.0, 0.0], std=[1 / 0.229, 1 / 0.224, 1 / 0.225]
+                        ),
+                        T.Normalize(
+                            mean=[-0.485, -0.456, -0.406], std=[1.0, 1.0, 1.0]),
+                    ]
+                )
 
                 rgb = denormalize(img2)
 
@@ -188,14 +214,14 @@ def infer(args):
 
                 axs[0, 0].imshow(rgb.squeeze().permute(
                     1, 2, 0).cpu().detach().numpy())
-                axs[0, 0].set_title('RGB')
+                axs[0, 0].set_title("RGB")
 
                 axs[0, 1].imshow(gt.squeeze().cpu().detach().numpy())
-                axs[0, 1].set_title('Ground-truth')
+                axs[0, 1].set_title("Ground-truth")
 
                 axs[1, 1].imshow(
                     cos_img2.cpu().detach().numpy(), cmap=plt.cm.jet)
-                axs[1, 1].set_title('2D Cosine Similarity')
+                axs[1, 1].set_title("2D Cosine Similarity")
 
                 # axs[1, 2].imshow(
                 #     cos_img2.cpu().detach().numpy(), cmap=plt.cm.jet)
@@ -229,41 +255,48 @@ def infer(args):
             # pixel_rocauc = roc_auc_score(pixel_labels_clean, pixel_preds_clean)
             # image_rocauc = roc_auc_score(np.stack(image_labels), np.stack(image_preds))
 
-            result_file_name = f'{
-                args.quantitative_folder}/{args.class_name}_{args.epochs_no}ep_{args.batch_size}bs.md'
+            result_file_name = f"{
+                args.quantitative_folder}/{args.class_name}_{args.epochs_no}ep_{args.batch_size}bs.md"
 
-            title_string = f'Metrics for class {args.class_name} with {
-                args.epochs_no}ep_{args.batch_size}bs'
-            header_string = 'AUPRO@30% & AUPRO@10% & AUPRO@5% & AUPRO@1% & P-AUROC'
-            results_string = f'{au_pros[0]:.3f} & {au_pros[1]:.3f} & {
-                au_pros[2]:.3f} & {au_pros[3]:.3f} & {pixel_rocauc:.3f} '
+            title_string = f"Metrics for class {args.class_name} with {
+                args.epochs_no}ep_{args.batch_size}bs"
+            header_string = "AUPRO@30% & AUPRO@10% & AUPRO@5% & AUPRO@1% & P-AUROC"
+            results_string = f"{au_pros[0]:.3f} & {au_pros[1]:.3f} & {
+                au_pros[2]:.3f} & {au_pros[3]:.3f} & {pixel_rocauc:.3f} "
 
             if not os.path.exists(args.quantitative_folder):
                 os.makedirs(args.quantitative_folder)
 
             with open(result_file_name, "w") as markdown_file:
-                markdown_file.write(title_string + '\n' +
-                                    header_string + '\n' + results_string)
+                markdown_file.write(
+                    title_string + "\n" + header_string + "\n" + results_string
+                )
 
             # Print AD&S metrics.
             print(title_string)
             print("AUPRO@30% | AUPRO@10% | AUPRO@5% | AUPRO@1% | P-AUROC")
             print(
-                f'  {au_pros[0]:.3f}   |   {au_pros[1]:.3f}   |   {
-                    au_pros[2]:.3f}  |   {au_pros[3]:.3f}  |   {pixel_rocauc:.3f} |',
-                end='\n')
+                f"  {au_pros[0]:.3f}   |   {au_pros[1]:.3f}   |   {
+                    au_pros[2]:.3f}  |   {au_pros[3]:.3f}  |   {pixel_rocauc:.3f} |",
+                end="\n",
+            )
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Make inference with Crossmodal Feature Networks (FADs) on a dataset.')
+        description="Make inference with Crossmodal Feature Networks (FADs) on a dataset."
+    )
 
-    parser.add_argument('--dataset_path', default='data', type=str,
-                        help='Dataset path.')
+    parser.add_argument(
+        "--dataset_path", default="data", type=str, help="Dataset path."
+    )
 
-    parser.add_argument('--qualitative_folder', default='./results/qualitatives', type=str,
-                        help='Path to the folder in which to save the qualitatives.')
+    parser.add_argument(
+        "--qualitative_folder",
+        default="./results/qualitatives",
+        type=str,
+        help="Path to the folder in which to save the qualitatives.",
+    )
 
     parser.add_argument(
         "--class_name",
@@ -287,28 +320,49 @@ if __name__ == '__main__':
             "medicine_pack",
             "small_bottles",
             "metal_plate",
-            "usb_connector_board"
+            "usb_connector_board",
         ],
         help="Category name.",
     )
 
-    parser.add_argument('--checkpoint_folder', default='./checkpoints/checkpoints_FAD', type=str,
-                        help='Path to the folder containing FADs checkpoints.')
+    parser.add_argument(
+        "--checkpoint_folder",
+        default="./checkpoints/checkpoints_FAD",
+        type=str,
+        help="Path to the folder containing FADs checkpoints.",
+    )
 
-    parser.add_argument('--quantitative_folder', default='./results/quantitatives', type=str,
-                        help='Path to the folder in which to save the quantitatives.')
+    parser.add_argument(
+        "--quantitative_folder",
+        default="./results/quantitatives",
+        type=str,
+        help="Path to the folder in which to save the quantitatives.",
+    )
 
-    parser.add_argument('--epochs_no', default=1, type=int,
-                        help='Number of epochs to train the FADs.')
+    parser.add_argument(
+        "--epochs_no", default=1, type=int, help="Number of epochs to train the FADs."
+    )
 
-    parser.add_argument('--batch_size_train', default=4, type=int,
-                        help='Batch dimension. Usually 16 is around the max.')
+    parser.add_argument(
+        "--batch_size_train",
+        default=4,
+        type=int,
+        help="Batch dimension. Usually 16 is around the max.",
+    )
 
-    parser.add_argument('--visualize_plot', default=False, action='store_true',
-                        help='Whether to show plot or not.')
+    parser.add_argument(
+        "--visualize_plot",
+        default=False,
+        action="store_true",
+        help="Whether to show plot or not.",
+    )
 
-    parser.add_argument('--produce_qualitatives', default=True, action='store_true',
-                        help='Whether to produce qualitatives or not.')
+    parser.add_argument(
+        "--produce_qualitatives",
+        default=True,
+        action="store_true",
+        help="Whether to produce qualitatives or not.",
+    )
 
     args = parser.parse_args()
 

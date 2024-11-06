@@ -1,7 +1,7 @@
 export CUDA_VISIBLE_DEVICES=0
 
-epochs=50
-batch_size=4
+epochs=1
+batch_size=1
 
 class_names=("small_battery",
             "screws_toys",
@@ -24,5 +24,5 @@ class_names=("small_battery",
 
 for class_name in "${class_names[@]}"
     do
-        python training.py --class_name $class_name --epochs_no $epochs --batch_size $batch_size 
+        python inference.py --class_name $class_name --epochs_no $epochs --batch_size $batch_size
     done

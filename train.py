@@ -46,12 +46,11 @@ def train(args):
     )
 
     # Dataloader.
-    train_loader = get_dataloader(args.dataset_path, common, common, 4, 16, True)
+    train_loader = get_dataloader(
+        os.path.join(args.dataset_path, args.class_name, "normal"), common, common, 4, 16, True)
 
     # Feature extractors.
     feature_extractor = Multimodal2DFeatures()
-
-
 
     # Model instantiation.
     FAD_LLToClean = FeatureProjectionMLP(in_features=768, out_features=768)
@@ -76,7 +75,8 @@ def train(args):
             # features, features_lowlight = feature_extractor.get_features_maps(images, lowlight)
 
             if args.batch_size == 1:
-                images, low_light = feature_extractor.get_features_maps(images, lowlight)
+                images, low_light = feature_extractor.get_features_maps(
+                    images, lowlight)
             else:
                 rgb_patches = []
                 xyz_patches = []
@@ -94,7 +94,9 @@ def train(args):
             transfer_features = FAD_LLToClean(low_light)
 
             low_light_mask = (low_light.sum(axis=-1) == 0)
-            loss = 1 - metric(transfer_features[~low_light_mask], low_light[~low_light_mask]).mean()
+            loss = 1 - \
+                metric(transfer_features[~low_light_mask],
+                       low_light[~low_light_mask]).mean()
             # loss = 1 - metric(images, transfer_features).mean()
 
             epoch_cos_sim.append(loss.item())
@@ -114,7 +116,8 @@ def train(args):
         if (epoch + 1) % args.save_interval == 0:
             torch.save(
                 FAD_LLToClean.state_dict(),
-                f"{args.checkpoint_folder}/{args.class_name}/FAD_LLToClean_{args.class_name}_{args.epochs_no}ep_{args.batch_size}bs.pth",
+                f"{args.checkpoint_folder}/{args.class_name}/FAD_LLToClean_{
+                    args.class_name}_{args.epochs_no}ep_{args.batch_size}bs.pth",
             )
 
 
@@ -124,7 +127,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--dataset_path", default="data/medicine/normal", type=str, help="Dataset path."
+        "--dataset_path", default="data", type=str, help="Dataset path."
     )
 
     parser.add_argument(
@@ -136,19 +139,27 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--class_name",
-        default="Medicine",
+        default="medicine_pack",
         type=str,
         choices=[
-            "bagel",
-            "cable_gland",
-            "carrot",
-            "cookie",
-            "dowel",
-            "foam",
-            "peach",
-            "potato",
-            "rope",
-            "tire",
+            "small_battery",
+            "screws_toys",
+            "furniture",
+            "tripod_plugs",
+            "water_cups",
+            "keys",
+            "pens",
+            "locks",
+            "screwdrivers",
+            "charging_cords",
+            "pencil_cords",
+            "water_cans",
+            "pills",
+            "locks",
+            "medicine_pack",
+            "small_bottles",
+            "metal_plate",
+            "usb_connector_board"
         ],
         help="Category name.",
     )

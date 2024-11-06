@@ -3,10 +3,10 @@ import os
 
 # Define the folder name patterns and their new names
 rename_map = {
-    'low': 'Low-light',
-    'well': 'Well-light',
-    'Low': 'Low-light',
-    'Well': 'Well-light',
+    'low': 'low-light',
+    'well': 'well-light',
+    'Low': 'low-light',
+    'Well': 'well-light',
 }
 def rename_folders(directory_path, rename_map=rename_map):
     # List all folders in the directory
@@ -110,29 +110,29 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Check file alignment between well-light and low-light folders')
     parser.add_argument('directory_path', type=str, help='Path to the directory containing well-light and low-light folders', default='data')
-    parser.add_argument('--gt_path', type=str, help='Path to the directory containing ground truth images', default='data/bowl')
+    parser.add_argument('--gt_path', type=str, help='Path to the directory containing ground truth images', default='data/medicine')
     args = parser.parse_args()
     # Folder structure is as follows:
     # data
-    # ├── Annotation
+    # ├── annotation
     # │   ├── *.json
-    # ├── Anomaly
-    # │   ├── Low_light
+    # ├── anomaly
+    # │   ├── low_light
     # │   │   ├── *.jpg
-    # │   ├── Well_light
+    # │   ├── well_light
     # │   │   ├── *.jpg
-    # ├── Normal
-    # │   ├── Low_light
+    # ├── normal
+    # │   ├── wow_light
     # │   │   ├── *.jpg
-    # │   ├── Well_light
+    # │   ├── well_light
     # │   │   ├── *.jpg
     # └── gt
     #     ├── *.png
 
 
-    rename_folders(os.path.join(args.directory_path, 'Anomaly'), rename_map)
-    rename_folders(os.path.join(args.directory_path, 'Normal'), rename_map)
+    rename_folders(os.path.join(args.directory_path, 'anomaly'), rename_map)
+    rename_folders(os.path.join(args.directory_path, 'normal'), rename_map)
 
     if args.gt_path:
-        check_file_alignment(os.path.join(args.directory_path, 'Anomaly'), os.path.join(args.gt_path, 'gt'))
-        check_file_alignment(os.path.join(args.directory_path,'Normal'))
+        check_file_alignment(os.path.join(args.directory_path, 'anomaly'), os.path.join(args.gt_path, 'gt'))
+        check_file_alignment(os.path.join(args.directory_path,'normal'))

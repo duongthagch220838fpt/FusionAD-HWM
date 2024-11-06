@@ -33,8 +33,6 @@ def infer(args):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    model_name = f"{args.class_name}_{args.epochs_no}ep_{args.batch_size}bs"
-
     IMAGENET_MEAN = [0.485, 0.456, 0.406]
     IMAGENET_STD = [0.229, 0.224, 0.225]
     common = T.Compose(
@@ -50,8 +48,8 @@ def infer(args):
     # test_loader = get_dataloader(
     #     "Anomaly", class_name=args.class_name, img_size=224, dataset_path=args.dataset_path
     # )
-    path_gt = args.dataset_path + args.class_name + "/gt"
-    path_anomaly = args.dataset_path + args.class_name + "/anomaly"
+    path_gt = args.dataset_path + '/' + args.class_name + "/gt"
+    path_anomaly = args.dataset_path + '/' +args.class_name + "/anomaly"
     test_dataset = TestDataset(
         path_anomaly, path_gt, transform=common, low_light_transform=common
     )
@@ -66,13 +64,14 @@ def infer(args):
 
     FAD_LLToClean.to(device)
     feature_extractor.to(device)
+    model_name = f"FAD_LLToClean{args.person}{args.unique_id}.pth"
     FAD_LLToClean.load_state_dict(
         torch.load(
-            args.checkpoint_folder
-            + f"/{args.class_name}_{args.epochs_no}ep_{args.batch_size_train}bs.pth"
+            f"{args.checkpoint_folder}/{args.class_name}/{model_name}",
         )
     )
-
+    # f"{args.checkpoint_folder}/{args.class_name}/FAD_LLToClean_{
+    # args.class_name}_{args.epochs_no}ep_{args.batch_size}bs.pth",
     FAD_LLToClean.eval()
     feature_extractor.eval()
 
@@ -114,7 +113,8 @@ def infer(args):
             # Mask for img2 features that are all zeros.
             feature_mask = img2_features.sum(axis=-1) == 0
             # feature_mask = (img2_features.sum(dim=-1) == 0).unsqueeze(-1)  # Shape: (1, 785, 1)
-
+            cos_img1 = (torch.nn.functional.normalize(img1_features, dim=1) -
+                        torch.nn.functional.normalize(img2_features, dim=1)).pow(2).sum(1).sqrt()
             # Cosine distance between img1 features and projected img2 features
             cos_img2 = (
                 (
@@ -130,12 +130,14 @@ def infer(args):
             cos_img2[feature_mask] = 0.0
             cos_img2 = cos_img2.reshape(224, 224)
 
+
+
             # cos_img2 = cos_img2.view(1, 1, 155, 157)  # Reshape for interpolation
             # cos_img2 = torch.nn.functional.interpolate(cos_img2, size=(224, 224), mode="bilinear", align_corners=False)
             # cos_img2 = cos_img2.squeeze()  # Shape: (224, 224)
 
             # Combine the cosine distances from both feature sets
-            # cos_comb = (cos_img2)
+
             # print("Cos_comb")
             # print(cos_comb.shape)
             # print("Feature_mask")
@@ -255,14 +257,11 @@ def infer(args):
             # pixel_rocauc = roc_auc_score(pixel_labels_clean, pixel_preds_clean)
             # image_rocauc = roc_auc_score(np.stack(image_labels), np.stack(image_preds))
 
-            result_file_name = f"{
-                args.quantitative_folder}/{args.class_name}_{args.epochs_no}ep_{args.batch_size}bs.md"
+            result_file_name = f"{args.quantitative_folder}/{args.class_name}_{args.epochs_no}ep_{args.batch_size}bs.md"
 
-            title_string = f"Metrics for class {args.class_name} with {
-                args.epochs_no}ep_{args.batch_size}bs"
+            title_string = f"Metrics for class {args.class_name} with {args.epochs_no}ep_{args.batch_size}bs"
             header_string = "AUPRO@30% & AUPRO@10% & AUPRO@5% & AUPRO@1% & P-AUROC"
-            results_string = f"{au_pros[0]:.3f} & {au_pros[1]:.3f} & {
-                au_pros[2]:.3f} & {au_pros[3]:.3f} & {pixel_rocauc:.3f} "
+            results_string = f"{au_pros[0]:.3f} & {au_pros[1]:.3f} & {au_pros[2]:.3f} & {au_pros[3]:.3f} & {pixel_rocauc:.3f}"
 
             if not os.path.exists(args.quantitative_folder):
                 os.makedirs(args.quantitative_folder)
@@ -275,11 +274,7 @@ def infer(args):
             # Print AD&S metrics.
             print(title_string)
             print("AUPRO@30% | AUPRO@10% | AUPRO@5% | AUPRO@1% | P-AUROC")
-            print(
-                f"  {au_pros[0]:.3f}   |   {au_pros[1]:.3f}   |   {
-                    au_pros[2]:.3f}  |   {au_pros[3]:.3f}  |   {pixel_rocauc:.3f} |",
-                end="\n",
-            )
+            print(f"  {au_pros[0]:.3f}   |   {au_pros[1]:.3f}   |   {au_pros[2]:.3f}  |   {au_pros[3]:.3f}  |   {pixel_rocauc:.3f} |",end="\n",)
 
 
 if __name__ == "__main__":
@@ -327,7 +322,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--checkpoint_folder",
-        default="./checkpoints/checkpoints_FAD",
+        default="./checkpoints",
         type=str,
         help="Path to the folder containing FADs checkpoints.",
     )
@@ -340,12 +335,19 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--epochs_no", default=1, type=int, help="Number of epochs to train the FADs."
+        "--epochs_no", default=50, type=int, help="Number of epochs to train the FADs."
     )
 
     parser.add_argument(
         "--batch_size_train",
         default=4,
+        type=int,
+        help="Batch dimension. Usually 16 is around the max.",
+    )
+
+    parser.add_argument(
+        "--batch_size",
+        default=1,
         type=int,
         help="Batch dimension. Usually 16 is around the max.",
     )
@@ -363,6 +365,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Whether to produce qualitatives or not.",
     )
+
+    parser.add_argument("--unique_id", type=str, default="v2theta",
+                        help="A unique identifier for the checkpoint (e.g., experiment ID)")
+
+    parser.add_argument("--person", default="DuongMinh" ,type=str,
+                        help="Name or initials of the person saving the checkpoint")
 
     args = parser.parse_args()
 

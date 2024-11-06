@@ -1,8 +1,11 @@
 import argparse
+from email.policy import default
+
 from torch.profiler import profile, record_function, ProfilerActivity
 import os
 import torch
 import wandb
+
 
 import numpy as np
 from itertools import chain
@@ -31,7 +34,8 @@ def train(args):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    model_name = f"{args.class_name}_{args.epochs_no}ep_{args.batch_size}bs"
+    model_name = f"FAD_LLToClean{args.person}{args.unique_id}.pth"
+
 
     wandb.init(project="AD", name=model_name)
     IMAGENET_MEAN = [0.485, 0.456, 0.406]
@@ -94,11 +98,17 @@ def train(args):
             transfer_features = FAD_LLToClean(low_light)
 
             low_light_mask = (low_light.sum(axis=-1) == 0)
-            loss = 1 - \
-                metric(transfer_features[~low_light_mask],
-                       low_light[~low_light_mask]).mean()
-            # loss = 1 - metric(images, transfer_features).mean()
+            # loss = 1 - \
+            #     metric(transfer_features[~low_light_mask],
+            #            images[~low_light_mask]).mean()
 
+            loss = 1 - metric(transfer_features[~low_light_mask],images[~low_light_mask]).mean()
+            # loss = 1 - metric(images, transfer_features).mean()
+            #-------------------------------------------------
+            # 1. la 2 loss, w-t, r-t
+            # 2. using well light mask
+            # 3. dung 2 mlp
+            #---------------------------------------------------
             epoch_cos_sim.append(loss.item())
             if not torch.isnan(loss) and not torch.isinf(loss):
                 optimizer.zero_grad()
@@ -116,8 +126,7 @@ def train(args):
         if (epoch + 1) % args.save_interval == 0:
             torch.save(
                 FAD_LLToClean.state_dict(),
-                f"{args.checkpoint_folder}/{args.class_name}/FAD_LLToClean_{
-                    args.class_name}_{args.epochs_no}ep_{args.batch_size}bs.pth",
+                f"{args.checkpoint_folder}/{args.class_name}/{model_name}",
             )
 
 
@@ -165,7 +174,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--epochs_no", default=50, type=int, help="Number of epochs to train the FADs."
+        "--epochs_no", default=20, type=int, help="Number of epochs to train the FADs."
     )
 
     parser.add_argument(
@@ -181,6 +190,12 @@ if __name__ == "__main__":
         type=int,
         help="Number of epochs to train the FADs.",
     )
+
+    parser.add_argument("--unique_id", type=str, default="v2theta+",
+                        help="A unique identifier for the checkpoint (e.g., experiment ID)")
+
+    parser.add_argument("--person", default="DuongMinh" ,type=str,
+                        help="Name or initials of the person saving the checkpoint")
 
     args = parser.parse_args()
     train(args)

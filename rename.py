@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Check file alignment between well-light and low-light folders')
     parser.add_argument('directory_path', type=str, help='Path to the directory containing well-light and low-light folders', default='data')
-    parser.add_argument('--gt_path', type=str, help='Path to the directory containing ground truth images', default='data/medicine')
+    parser.add_argument('--gt_path', type=str, help='Path to the directory containing ground truth images', default='data/medicine_pack')
     args = parser.parse_args()
     # Folder structure is as follows:
     # data

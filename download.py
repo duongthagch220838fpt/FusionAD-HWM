@@ -5,7 +5,7 @@ import argparse
 import gdown
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', default="medicine",
+parser.add_argument('--dataset', default="medicine_pack",
                     type=str, help="dataset classname")
 args = vars(parser.parse_args())
 
@@ -33,5 +33,5 @@ def remove_directory(directory):
         shutil.rmtree(directory)
 
 
-download_file('1TmZIQTEaL5m4IFBs4NiF0Wj-1POaaGJ0', 'medicine.zip')
-unzip_file('medicine.zip')
+download_file('1TmZIQTEaL5m4IFBs4NiF0Wj-1POaaGJ0', 'medicine_pack.zip')
+unzip_file('medicine_pack.zip')

@@ -257,7 +257,7 @@ def infer(args):
             # pixel_rocauc = roc_auc_score(pixel_labels_clean, pixel_preds_clean)
             # image_rocauc = roc_auc_score(np.stack(image_labels), np.stack(image_preds))
 
-            result_file_name = f"{args.quantitative_folder}/{args.class_name}_{args.epochs_no}ep_{args.batch_size}bs.md"
+            result_file_name = f"{args.quantitative_folder}/{args.class_name}_{args.epochs_no}ep_{args.batch_size}bs{args.unique_id}.md"
 
             title_string = f"Metrics for class {args.class_name} with {args.epochs_no}ep_{args.batch_size}bs"
             header_string = "AUPRO@30% & AUPRO@10% & AUPRO@5% & AUPRO@1% & P-AUROC"
@@ -335,7 +335,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--epochs_no", default=50, type=int, help="Number of epochs to train the FADs."
+        "--epochs_no", default=10, type=int, help="Number of epochs to train the FADs."
     )
 
     parser.add_argument(
@@ -366,7 +366,7 @@ if __name__ == "__main__":
         help="Whether to produce qualitatives or not.",
     )
 
-    parser.add_argument("--unique_id", type=str, default="v2theta",
+    parser.add_argument("--unique_id", type=str, default="test+",
                         help="A unique identifier for the checkpoint (e.g., experiment ID)")
 
     parser.add_argument("--person", default="DuongMinh" ,type=str,

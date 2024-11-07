@@ -20,7 +20,7 @@ from models.features2d import Multimodal2DFeatures
 from models.dataset import BaseAnomalyDetectionDataset
 
 
-def set_seeds(sid=115):
+def set_seeds(sid=42):
     np.random.seed(sid)
 
     torch.manual_seed(sid)
@@ -79,30 +79,44 @@ def train(args):
             # features, features_lowlight = feature_extractor.get_features_maps(images, lowlight)
 
             if args.batch_size == 1:
-                images, low_light = feature_extractor.get_features_maps(
-                    images, lowlight)
+                # images, low_light = feature_extractor.get_features_maps(
+                #     images, lowlight)
+                images_feat, lowlight_feat = feature_extractor.get_features_maps(images, lowlight)
             else:
-                rgb_patches = []
-                xyz_patches = []
+                # rgb_patches = []
+                # xyz_patches = []
+                images_feat_list, lowlight_feat_list = [], []
 
-                for i in range(images.shape[0]):
-                    rgb_patch, xyz_patch = feature_extractor.get_features_maps(images[i].unsqueeze(dim=0),
-                                                                               lowlight[i].unsqueeze(dim=0))
+                # for i in range(images.shape[0]):
+                #     rgb_patch, xyz_patch = feature_extractor.get_features_maps(images[i].unsqueeze(dim=0),
+                #                                                                lowlight[i].unsqueeze(dim=0))
+                #
+                #     rgb_patches.append(rgb_patch)
+                #     xyz_patches.append(xyz_patch)
+                for j in range(images.shape[0]):
+                    img_feat, low_feat = feature_extractor.get_features_maps(
+                        images[j].unsqueeze(dim=0), lowlight[j].unsqueeze(dim=0)
+                    )
+                    images_feat_list.append(img_feat)
+                    lowlight_feat_list.append(low_feat)
 
-                    rgb_patches.append(rgb_patch)
-                    xyz_patches.append(xyz_patch)
+                # images = torch.stack(rgb_patches, dim=0)
+                # low_light = torch.stack(xyz_patches, dim=0)
+                images_feat = torch.stack(images_feat_list, dim=0)
+                lowlight_feat = torch.stack(lowlight_feat_list, dim=0)
 
-                images = torch.stack(rgb_patches, dim=0)
-                low_light = torch.stack(xyz_patches, dim=0)
+            transfer_features = FAD_LLToClean(lowlight_feat)
 
-            transfer_features = FAD_LLToClean(low_light)
-
-            low_light_mask = (low_light.sum(axis=-1) == 0)
+            # low_light_mask = (low_light.sum(axis=-1) == 0)
+            mask = (lowlight_feat.sum(axis=-1) == 0)
             # loss = 1 - \
             #     metric(transfer_features[~low_light_mask],
             #            images[~low_light_mask]).mean()
 
-            loss = 1 - metric(transfer_features[~low_light_mask],images[~low_light_mask]).mean()
+            # loss = 1 - metric(transfer_features[~low_light_mask],low_light[~low_light_mask]).mean()
+            # loss = 1 - metric(transfer_features[~low_light_mask], low_light[~low_light_mask]).mean()
+            loss = 1 - metric(transfer_features[~mask], images_feat[~mask]).mean()
+
             # loss = 1 - metric(images, transfer_features).mean()
             #-------------------------------------------------
             # 1. la 2 loss, w-t, r-t
@@ -174,7 +188,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--epochs_no", default=20, type=int, help="Number of epochs to train the FADs."
+        "--epochs_no", default=10, type=int, help="Number of epochs to train the FADs."
     )
 
     parser.add_argument(
@@ -191,7 +205,7 @@ if __name__ == "__main__":
         help="Number of epochs to train the FADs.",
     )
 
-    parser.add_argument("--unique_id", type=str, default="v2theta+",
+    parser.add_argument("-u","--unique_id", type=str, default="test+",
                         help="A unique identifier for the checkpoint (e.g., experiment ID)")
 
     parser.add_argument("--person", default="DuongMinh" ,type=str,

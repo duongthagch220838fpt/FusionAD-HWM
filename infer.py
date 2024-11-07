@@ -137,7 +137,11 @@ def infer(args):
             # cos_img2 = cos_img2.squeeze()  # Shape: (224, 224)
 
             # Combine the cosine distances from both feature sets
+<<<<<<< Updated upstream
 
+=======
+            cos_comb = (cos_img2*cos_img1)
+>>>>>>> Stashed changes
             # print("Cos_comb")
             # print(cos_comb.shape)
             # print("Feature_mask")
@@ -221,6 +225,7 @@ def infer(args):
                 axs[0, 1].imshow(gt.squeeze().cpu().detach().numpy())
                 axs[0, 1].set_title("Ground-truth")
 
+<<<<<<< Updated upstream
                 axs[1, 1].imshow(
                     cos_img2.cpu().detach().numpy(), cmap=plt.cm.jet)
                 axs[1, 1].set_title("2D Cosine Similarity")
@@ -228,6 +233,16 @@ def infer(args):
                 # axs[1, 2].imshow(
                 #     cos_img2.cpu().detach().numpy(), cmap=plt.cm.jet)
                 # axs[1, 2].set_title('Combined Cosine Similarity')
+=======
+                axs[1, 0].imshow(cos_comb.cpu().detach().numpy(), cmap=plt.cm.jet)
+                axs[1, 0].set_title('cos comb')
+
+                axs[1, 1].imshow(cos_img2.cpu().detach().numpy(), cmap=plt.cm.jet)
+                axs[1, 1].set_title('2D Cosine Similarity')
+
+                axs[1, 2].imshow(cos_comb.cpu().detach().numpy(), cmap=plt.cm.jet)
+                axs[1, 2].set_title('Combined Cosine Similarity')
+>>>>>>> Stashed changes
 
                 # Remove ticks and labels from all subplots
                 for ax in axs.flat:

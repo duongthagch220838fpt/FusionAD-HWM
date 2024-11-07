@@ -5,8 +5,12 @@ from torch.profiler import profile, record_function, ProfilerActivity
 import os
 import torch
 import wandb
+<<<<<<< Updated upstream
 
 
+=======
+import datetime
+>>>>>>> Stashed changes
 import numpy as np
 from itertools import chain
 
@@ -33,9 +37,14 @@ def train(args):
     set_seeds()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
+<<<<<<< Updated upstream
 
     model_name = f"FAD_LLToClean{args.person}{args.unique_id}.pth"
 
+=======
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    model_name = f"FAD_LLToClean_{args.person}_{timestamp}_{args.unique_id}.pth"
+>>>>>>> Stashed changes
 
     wandb.init(project="AD", name=model_name)
     IMAGENET_MEAN = [0.485, 0.456, 0.406]
@@ -126,7 +135,11 @@ def train(args):
         if (epoch + 1) % args.save_interval == 0:
             torch.save(
                 FAD_LLToClean.state_dict(),
+<<<<<<< Updated upstream
                 f"{args.checkpoint_folder}/{args.class_name}/{model_name}",
+=======
+                f"{args.checkpoint_folder}/{model_name}",
+>>>>>>> Stashed changes
             )
 
 
@@ -191,11 +204,15 @@ if __name__ == "__main__":
         help="Number of epochs to train the FADs.",
     )
 
+<<<<<<< Updated upstream
     parser.add_argument("--unique_id", type=str, default="v2theta+",
                         help="A unique identifier for the checkpoint (e.g., experiment ID)")
 
     parser.add_argument("--person", default="DuongMinh" ,type=str,
                         help="Name or initials of the person saving the checkpoint")
+=======
+    parser.add_argument("--unique_id", type=str, default="v1", help="A unique identifier for the checkpoint (e.g., experiment ID)")
+>>>>>>> Stashed changes
 
     args = parser.parse_args()
     train(args)

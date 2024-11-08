@@ -98,6 +98,8 @@ def train(args):
                 well_lit = torch.stack(rgb_patches, dim=0)
                 low_light = torch.stack(xyz_patches, dim=0)
 
+            low_light = low_light.permute(0, 3, 1, 2)
+
             transfer_features = ACMF_module(low_light)
 
             # This line is for ACMF only 

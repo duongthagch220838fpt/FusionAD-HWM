@@ -12,8 +12,10 @@ from models.features import MultimodalFeatures
 
 # from models.dataset import get_data_loader
 from models.feature_transfer_nets import FeatureProjectionMLP, FeatureProjectionMLP_big
-from models.ad_models import FeatureExtractors
-from models.features2d import Multimodal2DFeatures
+# from models.ad_models import FeatureExtractors
+from models.Acmf import ACMF
+from models.idea1 import Idea1
+# from models.features2d import Multimodal2DFeatures
 from utils.metrics_utils import calculate_au_pro
 from sklearn.metrics import roc_auc_score
 from dataset2D import SquarePad, TestDataset
@@ -57,10 +59,10 @@ def infer(args):
     test_loader = DataLoader(dataset=test_dataset,
                              batch_size=1, num_workers=16)
     # Feature extractors.
-    feature_extractor = Multimodal2DFeatures(image_size=224)
+    feature_extractor = Idea1(image_size=224)
 
     # Model instantiation.
-    FAD_LLToClean = FeatureProjectionMLP(in_features=768, out_features=768)
+    FAD_LLToClean = ACMF(in_features=768, out_features=768)
 
     FAD_LLToClean.to(device)
     feature_extractor.to(device)
@@ -107,8 +109,11 @@ def infer(args):
 
             # Project features from img2 into the same space as img1 using the FeatureProjectionMLP
             # FeatureProjectionMLP now projects between 2D features
+            img2_features = img2_features.permute(0, 3, 1, 2)
+
             projected_img2_features = FAD_LLToClean(img2_features)
 
+            projected_img2_features = projected_img2_features.permute(0, 2, 3, 1)
             # Mask invalid features (if necessary)
             # Mask for img2 features that are all zeros.
             feature_mask = img2_features.sum(axis=-1) == 0
@@ -368,7 +373,7 @@ if __name__ == "__main__":
     parser.add_argument("--unique_id", type=str, default="test+",
                         help="A unique identifier for the checkpoint (e.g., experiment ID)")
 
-    parser.add_argument("--person", default="DuongMinh" ,type=str,
+    parser.add_argument("--person", default="Minh" ,type=str,
                         help="Name or initials of the person saving the checkpoint")
 
     args = parser.parse_args()

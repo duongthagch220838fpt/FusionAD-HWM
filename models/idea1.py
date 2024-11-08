@@ -81,7 +81,7 @@ class Idea1(torch.nn.Module):
         # print("Shape of rgb_patch_upsample1:", rgb_patch_upsample1.shape)  # Expect (1, 768, 224, 224)
         # transpose to (1, 224, 224, 768)
         well_lit_upsample = well_lit_upsample.permute(0, 2, 3, 1)
-        # low_light_upsample = rgb_patch_upsample2.permute(0, 2, 3, 1)
+        low_light_upsample = low_light_upsample.permute(0, 2, 3, 1)
         return well_lit_upsample, low_light_upsample
 
         
@@ -94,12 +94,13 @@ if __name__ == '__main__':
     rgb1 = torch.randn(1, 3, 224, 224)
     rgb1 = torch.randn(1, 3, 224, 224)
     rgb_patch_final1, rgb_patch_final2 = model.get_features_maps(rgb1, rgb1)
-
+    x = rgb_patch_final1.permute(0, 3, 1, 2)
+    print(x.shape)
     # Check if the output is still in (224, 224) format and flatten it if necessary
     # rgb_patch_final1 should be of shape (50176, C) where C is the channel dimension of the final feature map
-    if rgb_patch_final1.shape[-2:] == (224, 224):
-        rgb_patch_final1 = rgb_patch_final1.view(-1, rgb_patch_final1.shape[1])
-        rgb_patch_final2 = rgb_patch_final2.view(-1, rgb_patch_final2.shape[1])
+    # if rgb_patch_final1.shape[-2:] == (224, 224):
+    #     rgb_patch_final1 = rgb_patch_final1.view(-1, rgb_patch_final1.shape[1])
+    #     rgb_patch_final2 = rgb_patch_final2.view(-1, rgb_patch_final2.shape[1])
 
     # Output the shape to confirm correctness
     # print("Shape of rgb_patch_final1:", rgb_patch_final1.shape)

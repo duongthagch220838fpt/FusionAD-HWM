@@ -1,9 +1,13 @@
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
+
+
 class ChannelAttention(nn.Module):
+    
     def __init__(self, channels, reduction=16):
         super(ChannelAttention, self).__init__()
         self.fc1 = nn.Conv2d(channels, channels // reduction, kernel_size=1, bias=False)
@@ -11,13 +15,16 @@ class ChannelAttention(nn.Module):
         self.fc2 = nn.Conv2d(channels // reduction, channels, kernel_size=1, bias=False)
         self.sigmoid = nn.Sigmoid()
 
+
     def forward(self, x):
         avg_out = self.fc2(self.relu(self.fc1(x.mean((2, 3), keepdim=True))))
         max_out = self.fc2(self.relu(self.fc1(x.amax((2, 3), keepdim=True))))
         return self.sigmoid(avg_out + max_out)
 
 
+
 class SpatialAttention(nn.Module):
+    
     def __init__(self, kernel_size=7):
         super(SpatialAttention, self).__init__()
         self.conv = nn.Conv2d(
@@ -30,6 +37,8 @@ class SpatialAttention(nn.Module):
         max_out, _ = torch.max(x, dim=1, keepdim=True)
         x = torch.cat([avg_out, max_out], dim=1)
         return self.sigmoid(self.conv(x))
+
+
 
 
 class ACMF(nn.Module):
@@ -104,6 +113,7 @@ if __name__ == "__main__":
 
     F_img_t = torch.randn(batch_size, 768,28, 28)
     F_evt_t = torch.randn(batch_size, 768, 28, 28)
+
 
     # Initialize the ACMF module
     acmf = ACMF(in_channels_img, in_channels_evt)

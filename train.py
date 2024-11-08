@@ -205,7 +205,7 @@ if __name__ == "__main__":
         help="Number of epochs to train the FADs.",
     )
 
-    parser.add_argument("-u","--unique_id", type=str, default="test+",
+    parser.add_argument("--unique_id", type=str, default="v2theta+",
                         help="A unique identifier for the checkpoint (e.g., experiment ID)")
 
     parser.add_argument("--person", default="DuongMinh" ,type=str,

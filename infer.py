@@ -138,9 +138,12 @@ def infer(args):
 
             # Combine the cosine distances from both feature sets
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 >>>>>>> 645e482 ()
+=======
+>>>>>>> 2ad7ca51f7f10472134aa8e65c3a21222836648c
             # print("Cos_comb")
             # print(cos_comb.shape)
             # print("Feature_mask")

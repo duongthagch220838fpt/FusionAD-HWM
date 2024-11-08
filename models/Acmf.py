@@ -87,12 +87,80 @@ class LightSpatialAttn(nn.Module):
         self.conv = ConvNormAct(1, 1, kernel_size, apply_act=False)
         self.gate = create_act_layer(gate_layer)
 
+<<<<<<< HEAD
     def forward(self, x):
         x_attn = 0.5 * x.mean(dim=1, keepdim=True) + 0.5 * x.amax(dim=1, keepdim=True)
         x_attn = self.conv(x_attn)
         return x * self.gate(x_attn)
     
 if __name__ == '__main__':
+=======
+class ACMF(nn.Module):
+    def __init__(self, in_channels_img, in_channels_evt, reduction=16):
+        super(ACMF, self).__init__()
+        # Initial convolution to merge image and event features
+        self.conv1 = nn.Conv2d(
+            in_channels_img + in_channels_evt,
+            in_channels_img,
+            kernel_size=3,
+            stride=1,
+            padding=0,
+        )
+        # Average pooling to downscale features
+        self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
+
+        # Channel and spatial attention modules
+        self.ca = ChannelAttention(in_channels_img, reduction=reduction)
+        self.sa = SpatialAttention()
+
+        # Final convolution to refine enhanced features
+        self.conv2 = nn.Conv2d(
+            in_channels_img,
+            in_channels_img,
+            kernel_size=3,
+        )
+
+        # self.conv3 = nn.Conv2d(in_channels_evt)
+
+    def forward(self, F_img_t, F_evt_t):
+        # Concatenate image and event features along the channel dimension
+        cat_fea = torch.cat(
+            (F_img_t, F_evt_t), dim=1
+        )  # Shape: (batch, in_channels_img + in_channels_evt, H, W)
+
+        # Apply the first convolution
+        cat_fea = self.conv1(cat_fea)
+        # print(f"after conv1 {cat_fea.shape}")
+        # Apply average pooling
+        cat_fea = self.avg_pool(cat_fea)  # Shape: bx768x1x1
+        # print(cat_fea.shape)
+        # Either split tensor or just multiply Element-wise
+        F_evt_t_mul = F_evt_t * cat_fea
+        F_img_t_mul = F_img_t * cat_fea
+        # Apply channel attention and spatial attention sequentially
+        ca_out = self.ca(F_evt_t_mul)  # Channel attention output
+        sa_out = self.sa(ca_out)  # Spatial attention output
+
+        # Multiply the attention maps with the input feature map
+        x = F_img_t_mul + sa_out
+
+        # Apply the second convolution
+        x = self.conv2(x)
+        evt = self.conv2(F_img_t_mul)
+        # Upsample to match the original spatial dimensions of `F_img_t`
+        # x = F.interpolate(
+        #     x, size=F_img_t.shape[2:], mode="bilinear", align_corners=False
+        # )
+
+        # Element-wise sum with the original image features
+        out = evt + x
+        out_upsample = torch.nn.functional.interpolate(out, size=(224, 224), mode='bilinear', align_corners=False)
+        out = out_upsample.permute(0, 2, 3, 1) # (batch, H, W, 768)
+        return out
+
+
+if __name__ == "__main__":
+>>>>>>> 645e482 ()
     # Define a dummy input for testing
     batch_size = 1
     in_channels_img = 768
@@ -107,4 +175,4 @@ if __name__ == '__main__':
     acmf = ACMF(in_channels_img, in_channels_evt)
     # Test the forward pass
     output = acmf(F_img_t, F_evt_t)
-    print(output.shape)
+    print(output.shape) # [50176,768]

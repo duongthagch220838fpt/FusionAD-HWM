@@ -113,8 +113,8 @@ def infer(args):
             # Mask for img2 features that are all zeros.
             feature_mask = img2_features.sum(axis=-1) == 0
             # feature_mask = (img2_features.sum(dim=-1) == 0).unsqueeze(-1)  # Shape: (1, 785, 1)
-            cos_img1 = (torch.nn.functional.normalize(img1_features, dim=1) -
-                        torch.nn.functional.normalize(img2_features, dim=1)).pow(2).sum(1).sqrt()
+            # cos_img1 = (torch.nn.functional.normalize(img1_features, dim=1) -
+            #             torch.nn.functional.normalize(img2_features, dim=1)).pow(2).sum(1).sqrt()
             # Cosine distance between img1 features and projected img2 features
             cos_img2 = (
                 (
@@ -137,7 +137,10 @@ def infer(args):
             # cos_img2 = cos_img2.squeeze()  # Shape: (224, 224)
 
             # Combine the cosine distances from both feature sets
+<<<<<<< HEAD
 
+=======
+>>>>>>> 645e482 ()
             # print("Cos_comb")
             # print(cos_comb.shape)
             # print("Feature_mask")

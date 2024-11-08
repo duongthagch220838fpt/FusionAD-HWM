@@ -13,14 +13,16 @@ from itertools import chain
 from tqdm import tqdm, trange
 import torchvision.transforms as T
 
-from models.ad_models import FeatureExtractors
-from models.feature_transfer_nets import FeatureProjectionMLP, FeatureProjectionMLP_big
+from models.Acmf import ACMF
+# from models.ad_models import FeatureExtractors
+# from models.feature_transfer_nets import FeatureProjectionMLP, FeatureProjectionMLP_big
 from dataset2D import *
 from models.features2d import Multimodal2DFeatures
 from models.dataset import BaseAnomalyDetectionDataset
+from models.idea1 import Idea1
 
 
-def set_seeds(sid=42):
+def set_seeds(sid=115):
     np.random.seed(sid)
 
     torch.manual_seed(sid)
@@ -34,7 +36,7 @@ def train(args):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    model_name = f"FAD_LLToClean{args.person}{args.unique_id}.pth"
+    model_name = f"ACMF_module{args.person}{args.unique_id}.pth"
 
 
     wandb.init(project="AD", name=model_name)
@@ -54,69 +56,59 @@ def train(args):
         os.path.join(args.dataset_path, args.class_name, "normal"), common, common, 4, 16, True)
 
     # Feature extractors.
-    feature_extractor = Multimodal2DFeatures()
+    feature_extractor = Idea1(image_size=224)
 
     # Model instantiation.
-    FAD_LLToClean = FeatureProjectionMLP(in_features=768, out_features=768)
+    ACMF_module = ACMF(in_channels_img=768, in_channels_evt=768)
 
-    optimizer = torch.optim.Adam(params=chain(FAD_LLToClean.parameters()))
+    optimizer = torch.optim.Adam(params=chain(ACMF_module.parameters()))
 
-    FAD_LLToClean.to(device)
+    ACMF_module.to(device)
     feature_extractor.to(device)
 
     metric = torch.nn.CosineSimilarity(dim=-1, eps=1e-06)
+    
 
     for epoch in trange(
         args.epochs_no, desc=f"Training Feature Transfer Net.{args.class_name}"
     ):
-        FAD_LLToClean.train()
+        ACMF_module.train()
         epoch_cos_sim = []
-        for i, (images, lowlight) in enumerate(
+        for i, (well_image, lowlight) in enumerate(
             tqdm(train_loader, desc=f"Epoch {epoch + 1}/{args.epochs_no}")
         ):
-            images, lowlight = images.to(device), lowlight.to(device)
+            well_image, lowlight = well_image.to(device), lowlight.to(device)
 
             # features, features_lowlight = feature_extractor.get_features_maps(images, lowlight)
 
             if args.batch_size == 1:
-                # images, low_light = feature_extractor.get_features_maps(
-                #     images, lowlight)
-                images_feat, lowlight_feat = feature_extractor.get_features_maps(images, lowlight)
+                well_lit, low_light = feature_extractor.get_features_maps(
+                    well_image, lowlight)
             else:
-                # rgb_patches = []
-                # xyz_patches = []
-                images_feat_list, lowlight_feat_list = [], []
+                rgb_patches = []
+                xyz_patches = []
 
-                # for i in range(images.shape[0]):
-                #     rgb_patch, xyz_patch = feature_extractor.get_features_maps(images[i].unsqueeze(dim=0),
-                #                                                                lowlight[i].unsqueeze(dim=0))
-                #
-                #     rgb_patches.append(rgb_patch)
-                #     xyz_patches.append(xyz_patch)
-                for j in range(images.shape[0]):
-                    img_feat, low_feat = feature_extractor.get_features_maps(
-                        images[j].unsqueeze(dim=0), lowlight[j].unsqueeze(dim=0)
-                    )
-                    images_feat_list.append(img_feat)
-                    lowlight_feat_list.append(low_feat)
+                for i in range(well_lit.shape[0]):
+                    rgb_patch, xyz_patch = feature_extractor.get_features_maps(well_lit[i].unsqueeze(dim=0),
+                                                                               lowlight[i].unsqueeze(dim=0))
 
-                # images = torch.stack(rgb_patches, dim=0)
-                # low_light = torch.stack(xyz_patches, dim=0)
-                images_feat = torch.stack(images_feat_list, dim=0)
-                lowlight_feat = torch.stack(lowlight_feat_list, dim=0)
+                    rgb_patches.append(rgb_patch)
+                    xyz_patches.append(xyz_patch)
 
-            transfer_features = FAD_LLToClean(lowlight_feat)
+                well_lit = torch.stack(rgb_patches, dim=0)
+                low_light = torch.stack(xyz_patches, dim=0)
 
-            # low_light_mask = (low_light.sum(axis=-1) == 0)
-            mask = (lowlight_feat.sum(axis=-1) == 0)
+            transfer_features = ACMF_module(low_light)
+
+            # This line is for ACMF only 
+            transfer_features = transfer_features.permute(0, 2, 3, 1)
+            # -------------------------------------------------
+            low_light_mask = (low_light.sum(axis=-1) == 0)
             # loss = 1 - \
             #     metric(transfer_features[~low_light_mask],
             #            images[~low_light_mask]).mean()
 
-            # loss = 1 - metric(transfer_features[~low_light_mask],low_light[~low_light_mask]).mean()
-            # loss = 1 - metric(transfer_features[~low_light_mask], low_light[~low_light_mask]).mean()
-            loss = 1 - metric(transfer_features[~mask], images_feat[~mask]).mean()
-
+            loss = 1 - metric(transfer_features[~low_light_mask],well_lit[~low_light_mask]).mean()
             # loss = 1 - metric(images, transfer_features).mean()
             #-------------------------------------------------
             # 1. la 2 loss, w-t, r-t
@@ -139,7 +131,7 @@ def train(args):
             os.mkdir(args.checkpoint_folder)
         if (epoch + 1) % args.save_interval == 0:
             torch.save(
-                FAD_LLToClean.state_dict(),
+                ACMF_module.state_dict(),
                 f"{args.checkpoint_folder}/{args.class_name}/{model_name}",
             )
 
@@ -188,7 +180,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--epochs_no", default=10, type=int, help="Number of epochs to train the FADs."
+        "--epochs_no", default=20, type=int, help="Number of epochs to train the FADs."
     )
 
     parser.add_argument(
@@ -205,11 +197,7 @@ if __name__ == "__main__":
         help="Number of epochs to train the FADs.",
     )
 
-<<<<<<< HEAD
-    parser.add_argument("-u","--unique_id", type=str, default="test+",
-=======
     parser.add_argument("--unique_id", type=str, default="v2theta+",
->>>>>>> 645e482 ()
                         help="A unique identifier for the checkpoint (e.g., experiment ID)")
 
     parser.add_argument("--person", default="DuongMinh" ,type=str,

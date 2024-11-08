@@ -11,7 +11,7 @@ dino_backbone_name = 'vit_base_patch8_224.dino' # 224/8 -> 28 patches.
 group_size = 128
 num_group = 1024
 
-class Multimodal2DFeatures(torch.nn.Module):
+class Idea1(torch.nn.Module):
     def __init__(self, image_size = 224):
         super().__init__()
 
@@ -59,34 +59,30 @@ class Multimodal2DFeatures(torch.nn.Module):
         # Check if rgb_feature_maps1 is a single tensor or a list of tensors
         # Check if rgb_feature_maps1 is a single tensor or a list of tensors
         if isinstance(rgb_feature_maps1, list):
-            rgb_patch1 = torch.cat(rgb_feature_maps1, 1)  # Concatenate if it's a list
+            well_lit = torch.cat(rgb_feature_maps1, 1)  # Concatenate if it's a list
         else:
-            rgb_patch1 = rgb_feature_maps1  # Use it directly if it's a single tensor
+            well_lit = rgb_feature_maps1  # Use it directly if it's a single tensor
 
         if isinstance(rgb_feature_maps2, list):
-            rgb_patch2 = torch.cat(rgb_feature_maps2, 1)  # Concatenate if it's a list
+            low_light = torch.cat(rgb_feature_maps2, 1)  # Concatenate if it's a list
         else:
-            rgb_patch2 = rgb_feature_maps2  # Use it directly if it's a single tensor
+            low_light = rgb_feature_maps2  # Use it directly if it's a single tensor
     
         # Resize the feature maps to 224x224
-        # print("Shape of rgb_patch1 before resize:", rgb_patch1.shape)  # Expected (1, 785, 768) or similar
+        # print("Shape of well_lit before resize:", well_lit.shape)  # Expected (1, 785, 768) or similar
 
         
         # Step 2: Interpolate to (224, 224)
-        rgb_patch_upsample1 = torch.nn.functional.interpolate(rgb_patch1, size=(224, 224), mode='bilinear', align_corners=False)
+        well_lit_upsample = torch.nn.functional.interpolate(well_lit, size=(224, 224), mode='bilinear', align_corners=False)
         
-        # rgb_patch_upsample1 = torch.nn.functional.interpolate(rgb_patch1, size=(224, 224), mode='bilinear', align_corners=False)
-        rgb_patch_upsample2 = torch.nn.functional.interpolate(rgb_patch2, size=(224, 224), mode='bilinear', align_corners=False)
+        # rgb_patch_upsample1 = torch.nn.functional.interpolate(well_lit, size=(224, 224), mode='bilinear', align_corners=False)
+        low_light_upsample = torch.nn.functional.interpolate(low_light, size=(224, 224), mode='bilinear', align_corners=False)
 
-        # print("Shape of rgb_patch_upsample1:", rgb_patch_upsample1.shape)  # Expect (1, 768, 224, 224
-        # Step 3: Reshape to (H*W, C) which is (50176, 768)
-        rgb_patch_final1 =  rgb_patch_upsample1.reshape(rgb_patch1.shape[1], -1).T
-        # Step 3: Reshape to (H*W, C) which is (50176, 768)
-        rgb_patch_final2 =  rgb_patch_upsample2.reshape(rgb_patch2.shape[1], -1).T
-        # Print final shape for verification
-        # print("Shape of rgb_patch_final1:", rgb_patch_final1.shape)  # Expect (50176, 768)
-
-        return rgb_patch_final1, rgb_patch_final2
+        # print("Shape of rgb_patch_upsample1:", rgb_patch_upsample1.shape)  # Expect (1, 768, 224, 224)
+        # transpose to (1, 224, 224, 768)
+        well_lit_upsample = well_lit_upsample.permute(0, 2, 3, 1)
+        # low_light_upsample = rgb_patch_upsample2.permute(0, 2, 3, 1)
+        return well_lit_upsample, low_light_upsample
 
         
     
@@ -94,7 +90,7 @@ class Multimodal2DFeatures(torch.nn.Module):
 if __name__ == '__main__':
 
 
-    model = Multimodal2DFeatures()
+    model = Idea1(224)
     rgb1 = torch.randn(1, 3, 224, 224)
     rgb1 = torch.randn(1, 3, 224, 224)
     rgb_patch_final1, rgb_patch_final2 = model.get_features_maps(rgb1, rgb1)

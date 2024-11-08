@@ -399,19 +399,19 @@ class PointTransformer(nn.Module):
 
 if __name__ == '__main__':
 
-    model = FeatureExtractors(device='cuda')
-    model.eval()
-
-    inputs = torch.rand(4, 3, 224, 224)
-    inputs.to('cuda')
-    out = model(inputs, inputs)
-    print(out[0].shape)
-
-    # model = FeatureExtractors(device='CPU')
+    # model = FeatureExtractors(device='cuda')
     # model.eval()
-    # inputs = torch.rand(1, 3, 224, 224)
-    # with profile(activities=[ProfilerActivity.CPU],
-    #              profile_memory=True, record_shapes=True) as prof:
-    #     model(inputs, inputs)
-    #
-    # print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=30))
+
+    # inputs = torch.rand(4, 3, 224, 224)
+    # inputs.to('cuda')
+    # out = model(inputs, inputs)
+    # print(out[0].shape)
+
+    model = FeatureExtractors(device='CPU')
+    model.eval()
+    inputs = torch.rand(4, 3, 224, 224)
+    with profile(activities=[ProfilerActivity.CPU],
+                 profile_memory=True, record_shapes=True) as prof:
+        model(inputs, inputs)
+    
+    print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=30))

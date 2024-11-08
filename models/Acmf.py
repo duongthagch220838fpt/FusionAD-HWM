@@ -39,7 +39,7 @@ class ACMF(nn.Module):
         self.conv1 = nn.Conv2d(
             in_channels_img + in_channels_evt,
             in_channels_img,
-            kernel_size=1,
+            kernel_size=3,
             stride=1,
             padding=0,
         )
@@ -54,7 +54,7 @@ class ACMF(nn.Module):
         self.conv2 = nn.Conv2d(
             in_channels_img,
             in_channels_img,
-            kernel_size=1,
+            kernel_size=3,
         )
 
         # self.conv3 = nn.Conv2d(in_channels_evt)
@@ -92,7 +92,7 @@ class ACMF(nn.Module):
         # Element-wise sum with the original image features
         out = evt + x
         out_upsample = torch.nn.functional.interpolate(out, size=(224, 224), mode='bilinear', align_corners=False)
-        out = out_upsample.reshape(out_upsample.shape[1], -1).T
+        out = out_upsample.permute(0, 2, 3, 1) # (batch, H, W, 768)
         return out
 
 
@@ -109,4 +109,4 @@ if __name__ == "__main__":
     acmf = ACMF(in_channels_img, in_channels_evt)
     # Test the forward pass
     output = acmf(F_img_t, F_evt_t)
-    print(output.shape)
+    print(output.shape) # [50176,768]

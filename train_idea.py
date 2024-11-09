@@ -87,23 +87,23 @@ def train(args):
             else:
                 rgb_patches = []
                 xyz_patches = []
+                transfer_patches = []
 
-                for i in range(well_lit.shape[0]):
-                    rgb_patch, xyz_patch = feature_extractor.get_features_maps(well_lit[i].unsqueeze(dim=0),
+                for i in range(well_image.shape[0]):
+                    rgb_patch, xyz_patch = feature_extractor.get_features_maps(well_image[i].unsqueeze(dim=0),
                                                                                lowlight[i].unsqueeze(dim=0))
+
+                    
+                    adaptive_features = ACMF_module(xyz_patch.permute(0, 3, 1, 2))
+                    
 
                     rgb_patches.append(rgb_patch)
                     xyz_patches.append(xyz_patch)
-
+                    transfer_patches.append(adaptive_features.permute(0, 2, 3, 1))
                 well_lit = torch.stack(rgb_patches, dim=0)
                 low_light = torch.stack(xyz_patches, dim=0)
+                transfer_features = torch.stack(transfer_patches, dim=0)
 
-            low_light = low_light.permute(0, 3, 1, 2)
-
-            transfer_features = ACMF_module(low_light)
-
-            # This line is for ACMF only 
-            transfer_features = transfer_features.permute(0, 2, 3, 1)
             # -------------------------------------------------
             low_light_mask = (low_light.sum(axis=-1) == 0)
             # loss = 1 - \

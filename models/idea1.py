@@ -94,8 +94,10 @@ if __name__ == '__main__':
     rgb1 = torch.randn(1, 3, 224, 224)
     rgb1 = torch.randn(1, 3, 224, 224)
     rgb_patch_final1, rgb_patch_final2 = model.get_features_maps(rgb1, rgb1)
-    x = rgb_patch_final1.permute(0, 3, 1, 2)
-    print(x.shape)
+    x = rgb_patch_final1
+    print(f"feature shape:{x.shape}")
+    mask = x.squeeze(0).sum(axis=-1)==0
+    print(f"mask shape:{mask.shape}")
     # Check if the output is still in (224, 224) format and flatten it if necessary
     # rgb_patch_final1 should be of shape (50176, C) where C is the channel dimension of the final feature map
     # if rgb_patch_final1.shape[-2:] == (224, 224):

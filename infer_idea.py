@@ -109,34 +109,28 @@ def infer(args):
 
             # Project features from img2 into the same space as img1 using the FeatureProjectionMLP
             # FeatureProjectionMLP now projects between 2D features
-            img2_features = img2_features.permute(0, 3, 1, 2)
+            
 
-            projected_img2_features = FAD_LLToClean(img2_features)
-
-            projected_img2_features = projected_img2_features.permute(0, 2, 3, 1)
+            projected_img2_features = FAD_LLToClean(img1_features.permute(0, 3, 1, 2),
+                                                    img2_features.permute(0, 3, 1, 2))
+            # (1,224,224,768)
+            
+            
             # Mask invalid features (if necessary)
             # Mask for img2 features that are all zeros.
-            feature_mask = img2_features.sum(axis=-1) == 0
+            feature_mask = img2_features.squeeze(0).sum(axis=-1) == 0
             # feature_mask = (img2_features.sum(dim=-1) == 0).unsqueeze(-1)  # Shape: (1, 785, 1)
             # cos_img1 = (torch.nn.functional.normalize(img1_features, dim=1) -
             #             torch.nn.functional.normalize(img2_features, dim=1)).pow(2).sum(1).sqrt()
+            normalize_proj_img2 = torch.nn.functional.normalize(projected_img2_features, dim=1)
+            normalize_img1 = torch.nn.functional.normalize(img1_features, dim=1)
             # Cosine distance between img1 features and projected img2 features
-            cos_img2 = (
-                (
-                    torch.nn.functional.normalize(
-                        projected_img2_features, dim=1)
-                    - torch.nn.functional.normalize(img1_features, dim=1)
-                )
-                .pow(2)
-                .sum(1)
-                .sqrt()
-            )
-
-            cos_img2[feature_mask] = 0.0
+            cos_img2 = (normalize_proj_img2-normalize_img1).pow(2).sum(1).sqrt()
             cos_img2 = cos_img2.reshape(224, 224)
+            cos_img2 = cos_img2 * feature_mask
+ 
 
-
-
+        
             # cos_img2 = cos_img2.view(1, 1, 155, 157)  # Reshape for interpolation
             # cos_img2 = torch.nn.functional.interpolate(cos_img2, size=(224, 224), mode="bilinear", align_corners=False)
             # cos_img2 = cos_img2.squeeze()  # Shape: (224, 224)

@@ -18,7 +18,8 @@ from models.feature_transfer_nets import FeatureProjectionMLP, FeatureProjection
 from dataset2D import *
 from models.features2d import Multimodal2DFeatures
 from models.dataset import BaseAnomalyDetectionDataset
-
+from HWMNet.model import HWMNet
+from models.node_module import NodeModule
 
 def set_seeds(sid=42):
     np.random.seed(sid)
@@ -55,14 +56,18 @@ def train(args):
 
     # Feature extractors.
     feature_extractor = Multimodal2DFeatures()
-
+    feature_level_light = HWMNet()
+    node_module = NodeModule()
     # Model instantiation.
-    FAD_LLToClean = FeatureProjectionMLP(in_features=768, out_features=768)
+    FAD_LLToClean = FeatureProjectionMLP(in_features=192, out_features=192)
 
     optimizer = torch.optim.Adam(params=chain(FAD_LLToClean.parameters()))
-
+    lr_scheduler = torch.ExponentialLR(optimizer = optimizer, gamma=0.96)
     FAD_LLToClean.to(device)
     feature_extractor.to(device)
+
+    feature_level_light.to(device)
+    node_module.to(device)
 
     metric = torch.nn.CosineSimilarity(dim=-1, eps=1e-06)
 
@@ -86,7 +91,7 @@ def train(args):
                 # rgb_patches = []
                 # xyz_patches = []
                 images_feat_list, lowlight_feat_list = [], []
-
+                images_level_feat_list = []
                 # for i in range(images.shape[0]):
                 #     rgb_patch, xyz_patch = feature_extractor.get_features_maps(images[i].unsqueeze(dim=0),
                 #                                                                lowlight[i].unsqueeze(dim=0))
@@ -97,13 +102,18 @@ def train(args):
                     img_feat, low_feat = feature_extractor.get_features_maps(
                         images[j].unsqueeze(dim=0), lowlight[j].unsqueeze(dim=0)
                     )
+                    level_feat = feature_level_light(low_feat)
+                    low_feat = torch.cat([low_feat, level_feat], dim=1)
+
                     images_feat_list.append(img_feat)
                     lowlight_feat_list.append(low_feat)
+                    # images_level_feat_list.append(level_feat)
 
                 # images = torch.stack(rgb_patches, dim=0)
                 # low_light = torch.stack(xyz_patches, dim=0)
                 images_feat = torch.stack(images_feat_list, dim=0)
                 lowlight_feat = torch.stack(lowlight_feat_list, dim=0)
+                # images_level_feat = torch.stack(images_level_feat_list, dim=0)
 
             transfer_features = FAD_LLToClean(lowlight_feat)
 
@@ -128,6 +138,7 @@ def train(args):
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+                lr_scheduler.step()
 
         wandb.log(
             {

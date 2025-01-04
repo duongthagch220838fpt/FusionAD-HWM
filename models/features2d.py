@@ -2,14 +2,66 @@ import torch
 import numpy as np
 
 from sklearn.metrics import roc_auc_score
-from utils.metrics_utils import calculate_au_pro
-from models.ad_models import FeatureExtractors
+# from utils.metrics_utils import calculate_au_pro
+from ad_models import FeatureExtractors
 
 from torch.profiler import profile, record_function, ProfilerActivity
 
 dino_backbone_name = 'vit_base_patch8_224.dino' # 224/8 -> 28 patches.
 group_size = 128
 num_group = 1024
+
+# class Multimodal2DFeatures(torch.nn.Module):
+#     def __init__(self, image_size=224):
+#         super().__init__()
+
+#         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+#         self.deep_feature_extractor = FeatureExtractors(
+#             device=self.device,
+#             rgb_backbone_name=dino_backbone_name,
+#             group_size=group_size,
+#             num_group=num_group
+#         )
+#         self.deep_feature_extractor.to(self.device)
+
+#         self.image_size = image_size
+
+#         # Predefined Conv2d layers for resizing
+#         self.conv_rgb1 = torch.nn.Conv2d(768, 64, kernel_size=1).to(self.device)
+#         self.conv_rgb2 = torch.nn.Conv2d(768, 64, kernel_size=1).to(self.device)
+
+#     def get_features_maps(self, rgb1, rgb2):
+#         # Ensure RGB inputs are on the correct device
+#         rgb1, rgb2 = rgb1.to(self.device), rgb2.to(self.device)
+
+#         # Extract feature maps from the 2 RGB images
+#         rgb_feature_maps1, rgb_feature_maps2 = self(rgb1, rgb2)
+
+#         # Handle cases where feature maps are lists
+#         if isinstance(rgb_feature_maps1, list):
+#             rgb_patch1 = torch.cat(rgb_feature_maps1, 1)  # Concatenate if it's a list
+#         else:
+#             rgb_patch1 = rgb_feature_maps1  # Use directly if it's a single tensor
+
+#         if isinstance(rgb_feature_maps2, list):
+#             rgb_patch2 = torch.cat(rgb_feature_maps2, 1)  # Concatenate if it's a list
+#         else:
+#             rgb_patch2 = rgb_feature_maps2  # Use directly if it's a single tensor
+
+#         # Upsample to (224, 224) and apply Conv2d layers
+#         rgb_patch_upsample1 = torch.nn.functional.interpolate(
+#             rgb_patch1, size=(224, 224), mode='bilinear', align_corners=False
+#         )
+#         rgb_patch_upsample1 = self.conv_rgb1(rgb_patch_upsample1)
+
+#         rgb_patch_upsample2 = torch.nn.functional.interpolate(
+#             rgb_patch2, size=(224, 224), mode='bilinear', align_corners=False
+#         )
+#         rgb_patch_upsample2 = self.conv_rgb2(rgb_patch_upsample2)
+
+#         return rgb_patch_upsample1, rgb_patch_upsample2
+
 
 class Multimodal2DFeatures(torch.nn.Module):
     def __init__(self, image_size = 224):
@@ -24,6 +76,10 @@ class Multimodal2DFeatures(torch.nn.Module):
         self.deep_feature_extractor.to(self.device)
 
         self.image_size = image_size
+        # self.conv_d = torch.nn.Sequential(
+        #     torch.nn.Conv2d(768, 64, 1),
+            
+        # )
 
         # * Applies a 2D adaptive average pooling over an input signal composed of several input planes. 
         # * The output is of size H x W, for any input size. The number of output features is equal to the number of input planes.
@@ -37,7 +93,7 @@ class Multimodal2DFeatures(torch.nn.Module):
         with torch.no_grad():
             # Extract feature maps from the 2D images
             rgb_feature_maps, xyz_feature_maps = self.deep_feature_extractor(rgb, xyz)
-
+            print(f'rgb_feature_maps: {rgb_feature_maps.shape}')
         return rgb_feature_maps,xyz_feature_maps
 
     def calculate_metrics(self):
@@ -52,6 +108,7 @@ class Multimodal2DFeatures(torch.nn.Module):
     def get_features_maps(self, rgb1, rgb2):
         # Ensure RGB inputs are on the correct device
         rgb1, rgb2 = rgb1.to(self.device), rgb2.to(self.device)
+        print(rgb1.shape)
         # print(rgb1.shape)
         # Extract feature maps from the 2 RGB images
         rgb_feature_maps1,rgb_feature_maps2 = self(rgb1, rgb2) 
@@ -73,20 +130,25 @@ class Multimodal2DFeatures(torch.nn.Module):
 
         
         # Step 2: Interpolate to (224, 224)
-        rgb_patch_upsample1 = torch.nn.functional.interpolate(rgb_patch1, size=(224, 224), mode='bilinear', align_corners=False)
-        
         # rgb_patch_upsample1 = torch.nn.functional.interpolate(rgb_patch1, size=(224, 224), mode='bilinear', align_corners=False)
+        # Upsample to (224, 224) and reduce channels to 64
+        rgb_patch_upsample1 = torch.nn.functional.interpolate(rgb_patch1, size=(224, 224), mode='bilinear', align_corners=False)
+        # rgb_patch_upsample1 = torch.nn.Conv2d(rgb_patch_upsample1.shape[1], 64, kernel_size=1)(rgb_patch_upsample1)
+        # print("Shape of rgb_patch_upsample1:", rgb_patch_upsample1.shape)  # Expect (1, 64, 224, 224)
+        
         rgb_patch_upsample2 = torch.nn.functional.interpolate(rgb_patch2, size=(224, 224), mode='bilinear', align_corners=False)
+        
+        # rgb_patch_upsample2 = torch.nn.Conv2d(rgb_patch_upsample2.shape[1], 64, kernel_size=1)(rgb_patch_upsample2)
 
-        # print("Shape of rgb_patch_upsample1:", rgb_patch_upsample1.shape)  # Expect (1, 768, 224, 224
-        # Step 3: Reshape to (H*W, C) which is (50176, 768)
-        rgb_patch_final1 =  rgb_patch_upsample1.reshape(rgb_patch1.shape[1], -1).T
-        # Step 3: Reshape to (H*W, C) which is (50176, 768)
-        rgb_patch_final2 =  rgb_patch_upsample2.reshape(rgb_patch2.shape[1], -1).T
+        # # print("Shape of rgb_patch_upsample1:", rgb_patch_upsample1.shape)  # Expect (1, 768, 224, 224
+        # # Step 3: Reshape to (H*W, C) which is (50176, 768)
+        # rgb_patch_final1 =  rgb_patch_upsample1.reshape(rgb_patch1.shape[1], -1).T
+        # # Step 3: Reshape to (H*W, C) which is (50176, 768)
+        # rgb_patch_final2 =  rgb_patch_upsample2.reshape(rgb_patch2.shape[1], -1).T
         # Print final shape for verification
         # print("Shape of rgb_patch_final1:", rgb_patch_final1.shape)  # Expect (50176, 768)
 
-        return rgb_patch_final1, rgb_patch_final2
+        return rgb_patch_upsample1, rgb_patch_upsample2
 
         
     
@@ -95,8 +157,10 @@ if __name__ == '__main__':
 
 
     model = Multimodal2DFeatures()
+    # model.to('cuda')
     rgb1 = torch.randn(1, 3, 224, 224)
     rgb1 = torch.randn(1, 3, 224, 224)
+    # model(rgb1, rgb1)
     rgb_patch_final1, rgb_patch_final2 = model.get_features_maps(rgb1, rgb1)
 
     # Check if the output is still in (224, 224) format and flatten it if necessary

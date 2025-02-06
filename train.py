@@ -63,9 +63,19 @@ def train(args):
     # Model instantiation.
     FAD_LLToClean = FeatureProjectionMLP(in_channels=192, out_channels=192)
 
-    optimizer = torch.optim.Adam(params=chain(FAD_LLToClean.parameters()))
+    # optimizer = torch.optim.Adam(params=chain(FAD_LLToClean.parameters()))
+
+    optimizer = torch.optim.Adam(
+        list(node_module.parameters()) + list(feature_level_light.parameters()) + list(sa.parameters()),  # Chain all parameters into a single list
+        lr=1e-4,  # Learning rate
+        betas=(0.9, 0.999),
+        eps=1e-8,
+        weight_decay=1e-4,  # Optional L2 regularization
+    )
+
+
     lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer = optimizer, gamma=0.96)
-    FAD_LLToClean.to(device)
+    # FAD_LLToClean.to(device)
     feature_extractor.to(device)
 
     feature_level_light.to(device)
@@ -78,8 +88,8 @@ def train(args):
     for epoch in trange(
         args.epochs_no, desc=f"Training Feature Transfer Net.{args.class_name}"
     ):
-        FAD_LLToClean.train()
-        # feature_level_light.train()
+        # FAD_LLToClean.train()
+        feature_level_light.train()
         node_module.train()
         sa.train()
         epoch_cos_sim = []

@@ -1,9 +1,10 @@
 import torch
 import numpy as np
-
+import sys
+sys.path.append('../models')
 from sklearn.metrics import roc_auc_score
 # from utils.metrics_utils import calculate_au_pro
-from ad_models import FeatureExtractors
+from models.ad_models import FeatureExtractors
 
 from torch.profiler import profile, record_function, ProfilerActivity
 

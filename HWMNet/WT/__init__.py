@@ -1,1 +1,1 @@
-from WT.transform import DWT, IWT
+from HWMNet.WT.transform import DWT, IWT

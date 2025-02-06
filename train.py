@@ -6,7 +6,7 @@ import os
 import torch
 import wandb
 
-
+from HWMNet.WT.transform import DWT, IWT
 import numpy as np
 from itertools import chain
 
@@ -17,9 +17,9 @@ from models.ad_models import FeatureExtractors
 from models.feature_transfer_nets import FeatureProjectionMLP, FeatureProjectionMLP_big
 from dataset2D import *
 from models.features2d import Multimodal2DFeatures
-from models.dataset import BaseAnomalyDetectionDataset
-from HWMNet.model import HWMNet
-from models.node_module import NodeModule
+# from models.dataset import BaseAnomalyDetectionDataset
+from HWMNet.model.HWMNet import HWMNet
+from models.node_module import NodeModule, ChannelAttentionReduction
 
 def set_seeds(sid=42):
     np.random.seed(sid)
@@ -56,18 +56,22 @@ def train(args):
 
     # Feature extractors.
     feature_extractor = Multimodal2DFeatures()
-    feature_level_light = HWMNet()
+    # feature_level_light = HWMNet()
+    feature_level_light=HWMNet(in_chn=3, wf=64, depth=2)
     node_module = NodeModule()
+    sa = ChannelAttentionReduction()
     # Model instantiation.
-    FAD_LLToClean = FeatureProjectionMLP(in_features=192, out_features=192)
+    FAD_LLToClean = FeatureProjectionMLP(in_channels=192, out_channels=192)
 
     optimizer = torch.optim.Adam(params=chain(FAD_LLToClean.parameters()))
-    lr_scheduler = torch.ExponentialLR(optimizer = optimizer, gamma=0.96)
+    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer = optimizer, gamma=0.96)
     FAD_LLToClean.to(device)
     feature_extractor.to(device)
 
     feature_level_light.to(device)
     node_module.to(device)
+    sa.to(device)
+
 
     metric = torch.nn.CosineSimilarity(dim=-1, eps=1e-06)
 
@@ -75,6 +79,9 @@ def train(args):
         args.epochs_no, desc=f"Training Feature Transfer Net.{args.class_name}"
     ):
         FAD_LLToClean.train()
+        # feature_level_light.train()
+        node_module.train()
+        sa.train()
         epoch_cos_sim = []
         for i, (images, lowlight) in enumerate(
             tqdm(train_loader, desc=f"Epoch {epoch + 1}/{args.epochs_no}")
@@ -87,11 +94,11 @@ def train(args):
                 # images, low_light = feature_extractor.get_features_maps(
                 #     images, lowlight)
                 images_feat, lowlight_feat = feature_extractor.get_features_maps(images, lowlight)
+                
             else:
                 # rgb_patches = []
                 # xyz_patches = []
                 images_feat_list, lowlight_feat_list = [], []
-                images_level_feat_list = []
                 # for i in range(images.shape[0]):
                 #     rgb_patch, xyz_patch = feature_extractor.get_features_maps(images[i].unsqueeze(dim=0),
                 #                                                                lowlight[i].unsqueeze(dim=0))
@@ -102,9 +109,12 @@ def train(args):
                     img_feat, low_feat = feature_extractor.get_features_maps(
                         images[j].unsqueeze(dim=0), lowlight[j].unsqueeze(dim=0)
                     )
-                    level_feat = feature_level_light(low_feat)
+                    low_feat, img_feat = node_module(low_feat, img_feat)
+                    print(f'low_feat: {low_feat.shape}')
+                    level_feat = feature_level_light(lowlight)
+                    print(f'level_feat: {level_feat.shape}')
                     low_feat = torch.cat([low_feat, level_feat], dim=1)
-
+                    # print(f'low_feat: {low_feat.shape}')
                     images_feat_list.append(img_feat)
                     lowlight_feat_list.append(low_feat)
                     # images_level_feat_list.append(level_feat)
@@ -113,10 +123,15 @@ def train(args):
                 # low_light = torch.stack(xyz_patches, dim=0)
                 images_feat = torch.stack(images_feat_list, dim=0)
                 lowlight_feat = torch.stack(lowlight_feat_list, dim=0)
+                lowlight_feat = lowlight_feat.reshape(-1, 192 ,224, 224)
+                images_feat = images_feat.reshape(-1, 64 ,224, 224)
+                
+
                 # images_level_feat = torch.stack(images_level_feat_list, dim=0)
-
-            transfer_features = FAD_LLToClean(lowlight_feat)
-
+                print(f'images_feat: {images_feat.shape}')
+            # transfer_features = FAD_LLToClean(lowlight_feat)
+            lowlight_feat = sa(lowlight_feat)
+            # print(f'transfer_features: {transfer_features.shape}')
             # low_light_mask = (low_light.sum(axis=-1) == 0)
             mask = (lowlight_feat.sum(axis=-1) == 0)
             # loss = 1 - \
@@ -125,7 +140,7 @@ def train(args):
 
             # loss = 1 - metric(transfer_features[~low_light_mask],low_light[~low_light_mask]).mean()
             # loss = 1 - metric(transfer_features[~low_light_mask], low_light[~low_light_mask]).mean()
-            loss = 1 - metric(transfer_features[~mask], images_feat[~mask]).mean()
+            loss = 1 - metric(lowlight_feat[~mask], images_feat[~mask]).mean()
 
             # loss = 1 - metric(images, transfer_features).mean()
             #-------------------------------------------------

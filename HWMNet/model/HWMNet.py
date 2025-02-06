@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
-from transform import DWT, IWT
-# from WT.transform import *
-#fsssds
+# from transform import DWT, IWT
+from HWMNet.WT.transform import DWT, IWT
+
 ##---------- Basicsasa Layerdffddfs ----------gggggggggf
 def conv3x3(in_chn, out_chn, bias=True):
     layer = nn.Conv2d(in_chn, out_chn, kernel_size=3, stride=1, padding=1, bias=bias)
